@@ -1,3 +1,7 @@
 packages:
   - "apps/*"
   - "packages/*"
+minimumReleaseAgeExclude:
+  - "@cloudflare/vitest-plugin@1.4.10"
+  - miniflare@5.20261023.2-beta
+  - wrangler@4.155.0

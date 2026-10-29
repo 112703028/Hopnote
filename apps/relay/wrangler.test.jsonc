@@ -1,0 +1,9 @@
+{
+  "name": "pc-to-ipad-test",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-28",
+  "durable_objects": {
+    "bindings": [{ "name": "ROOM", "class_name": "Room" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Room"] }]
+}

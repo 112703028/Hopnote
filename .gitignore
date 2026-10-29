@@ -4,3 +4,4 @@ target/
 *.bak
 .DS_Store
 .superpowers/
+.wrangler/

@@ -1,0 +1,20 @@
+{
+  "name": "@pc-to-ipad/relay",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "deploy": "wrangler deploy"
+  },
+  "dependencies": {
+    "@pc-to-ipad/protocol": "workspace:*"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-plugin": "^1.4.10",
+    "typescript": "~6.0.3",
+    "vitest": "^5.0.5",
+    "wrangler": "^4.155.0"
+  }
+}
