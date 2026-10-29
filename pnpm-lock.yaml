@@ -10,6 +10,9 @@ importers:
 
   apps/desktop:
     dependencies:
+      '@pc-to-ipad/protocol':
+        specifier: workspace:*
+        version: link:../../packages/protocol
       '@tauri-apps/api':
         specifier: ^2
         version: 2.12.4
@@ -38,6 +41,9 @@ importers:
       vite:
         specifier: ^8.0.16
         version: 8.3.5(esbuild@0.28.2)(terser@5.51.2)
+      vitest:
+        specifier: ^5.0.5
+        version: 5.0.5(vite@8.3.5(esbuild@0.28.2)(terser@5.51.2))
 
   apps/pwa:
     dependencies:
