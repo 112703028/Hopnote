@@ -1,9 +1,13 @@
 {
   "name": "pc-to-ipad",
   "private": true,
-  "engines": { "node": ">=22" },
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "test": "pnpm -r --if-present test",
-    "typecheck": "pnpm -r --if-present typecheck"
+    "typecheck": "pnpm -r --if-present typecheck",
+    "deploy": "pnpm --filter @pc-to-ipad/pwa build && pnpm --filter @pc-to-ipad/relay deploy",
+    "new-room-secret": "node scripts/new-room-secret.mjs"
   }
 }

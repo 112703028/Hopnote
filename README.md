@@ -1,33 +1,50 @@
 # pc-to-ipad
 
-Send selected text from Windows to an iPad notes sidebar. See
-[pc-to-ipad-text-tool-plan.md](pc-to-ipad-text-tool-plan.md) for the full plan.
+Send selected text and screenshots from Windows to an iPad notes sidebar.
+Full plan: [pc-to-ipad-text-tool-plan.md](pc-to-ipad-text-tool-plan.md). Stage 1 implementation plan:
+[docs/superpowers/plans/2026-10-29-stage1-relay-pwa-desktop.md](docs/superpowers/plans/2026-10-29-stage1-relay-pwa-desktop.md).
+
+**Stage 1 is not encrypted.** The relay sees everything you send. Do not send passwords or private content yet.
+
+## How it works
+
+- `Alt+Q`: copies the current selection and sends it as text.
+- `Win+Shift+S` (Windows snipping), then `Alt+W`: sends what is on the clipboard (text or image).
+- The iPad web app shows cards, newest first. Tap a card to copy it; long-press to select text or drag an image into GoodNotes.
 
 ## Layout
 
 ```
-apps/desktop/     Windows tray app (Tauri v2: Rust backend + Preact/TypeScript frontend)
-packages/         (planned) shared protocol + crypto, text cleaner
+apps/desktop/      Windows tray app (Tauri v2: Rust + Preact/TypeScript)
+apps/relay/        Cloudflare Worker + Durable Object (one SQLite-backed room per secret)
+apps/pwa/          iPad web app (Vite + Preact), served by the same Worker
+packages/protocol/ shared types, limits, validation
+scripts/           new-room-secret.mjs
 ```
 
-`apps/pwa` (iPad web app) and the Cloudflare relay are not created yet.
+## Develop
 
-## Prerequisites (Windows)
-
-- Node + pnpm
-- Rust (https://rustup.rs) with the MSVC toolchain
-- Visual Studio C++ build tools, WebView2 (preinstalled on Windows 11)
-
-## Run the stage-0 spike
+Needs Node 22+, pnpm, Rust (MSVC toolchain), Visual Studio C++ build tools, WebView2.
 
 ```
 pnpm install
-cd apps/desktop
-pnpm tauri dev
+pnpm test          # all packages
+pnpm typecheck
+pnpm --filter desktop tauri dev
 ```
 
-Checks:
-1. Copy some text anywhere, press `Alt+Q`: it appears in the window.
-2. Close the window (hides to tray), wait about a minute, reopen from the tray menu:
-   the "gaps" list should be empty. Gaps mean the hidden webview was throttled.
-3. Tray menu "結束" exits the app.
+Run the relay and web app locally:
+
+```
+pnpm --filter @pc-to-ipad/pwa build
+cd apps/relay && pnpm exec wrangler dev     # http://localhost:8787
+```
+
+## Deploy and set up
+
+1. Create a free Cloudflare account, then `cd apps/relay && pnpm exec wrangler login`.
+2. `pnpm deploy` builds the web app and deploys the Worker. Note the `https://pc-to-ipad.<subdomain>.workers.dev` URL.
+3. `pnpm new-room-secret` prints a 32-character room secret. Treat it like a password.
+4. Desktop app: open the window, fill in the relay URL and the room secret, Save.
+5. iPad Safari: open `https://<your-worker-url>/#<room-secret>`, then Share > Add to Home Screen.
+   If the home-screen app asks for the secret, paste it once.
