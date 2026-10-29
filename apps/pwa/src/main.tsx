@@ -1,3 +1,5 @@
 import { render } from "preact";
+import { App } from "./App";
+import "./styles.css";
 
-render(<p>pc-to-ipad</p>, document.getElementById("app") as HTMLElement);
+render(<App />, document.getElementById("app") as HTMLElement);
