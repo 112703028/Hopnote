@@ -17,7 +17,9 @@ async function openSocket(room: string): Promise<{ ws: WebSocket; messages: stri
   ws.accept();
   opened.push(ws);
   const messages: string[] = [];
-  ws.addEventListener("message", (event) => messages.push(event.data as string));
+  ws.addEventListener("message", (event) => {
+    messages.push(event.data as string);
+  });
   return { ws, messages };
 }
 
