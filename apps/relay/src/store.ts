@@ -75,6 +75,13 @@ export function latestSeq(sql: SqlStorage): number {
   return rows[0].latest;
 }
 
+export function oldestReceivedAt(sql: SqlStorage): number | null {
+  const rows = sql
+    .exec<{ oldest: number | null }>("SELECT MIN(received_at) AS oldest FROM items")
+    .toArray();
+  return rows[0].oldest;
+}
+
 export function pruneItems(sql: SqlStorage, now: number): void {
   sql.exec("DELETE FROM items WHERE received_at < ?", now - RETENTION_MS);
   const limits: [ItemKind, number][] = [
