@@ -25,3 +25,35 @@ pre {
   white-space: pre-wrap;
   margin: 4px 0 12px;
 }
+
+form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+}
+
+input {
+  font-size: 0.95rem;
+  padding: 6px 8px;
+}
+
+.error {
+  margin: 0;
+  color: #b35c00;
+}
+
+.ok {
+  color: #1a7f37;
+}
+
+ul {
+  padding-left: 18px;
+}

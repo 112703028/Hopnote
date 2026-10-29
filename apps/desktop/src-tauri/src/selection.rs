@@ -46,10 +46,23 @@ fn copy_selection_blocking() -> Result<bool, String> {
     result
 }
 
-fn send_copy_and_wait() -> Result<bool, String> {
+/// For hotkey handlers that do not call `copy_selection`: stops the app in front
+/// from taking the swallowed hotkey as a lone Alt tap. Call it while Alt is held.
+#[tauri::command]
+pub fn mask_alt_tap() -> Result<(), String> {
+    mask_alt_if_down()
+}
+
+fn mask_alt_if_down() -> Result<(), String> {
     if is_down(VK_MENU) {
-        send_mask_key()?;
+        send_mask_key()
+    } else {
+        Ok(())
     }
+}
+
+fn send_copy_and_wait() -> Result<bool, String> {
+    mask_alt_if_down()?;
     if !wait_until(|| HOTKEY_KEYS.iter().all(|k| !is_down(*k)), KEY_RELEASE_TIMEOUT) {
         return Err("hotkey keys were not released in time".to_string());
     }

@@ -1,101 +1,117 @@
-import { useEffect, useRef, useState } from "preact/hooks";
-import { register, unregister } from "@tauri-apps/plugin-global-shortcut";
-import { invoke } from "@tauri-apps/api/core";
-import { readText } from "@tauri-apps/plugin-clipboard-manager";
+import { useEffect, useState } from "preact/hooks";
+import type { CaptureOutcome } from "./capture";
+import { registerHotkeys, type Hotkey } from "./hotkeys";
+import { loadSettings, saveSettings, validateSettings, type SettingsErrors } from "./settings";
 import "./App.css";
 
-const HOTKEY = "Alt+Q";
-const HEARTBEAT_MS = 1000;
-// A gap this much longer than the interval means the webview was throttled.
-const GAP_THRESHOLD_MS = 3000;
+const MAX_LOG = 10;
 
-interface Capture {
+interface LogEntry {
   at: number;
+  hotkey: Hotkey;
   text: string;
 }
 
-interface Gap {
-  at: number;
-  ms: number;
+function describe(outcome: CaptureOutcome): string {
+  switch (outcome.status) {
+    case "sent":
+      return `已送出（${outcome.kind === "text" ? "文字" : "圖片"}，#${outcome.seq}）`;
+    case "nothing-copied":
+      return "沒有複製到內容（有選取文字嗎？）";
+    case "empty":
+      return "剪貼簿裡沒有文字或圖片";
+    case "too-large":
+      return "圖片縮小後仍超過上限";
+    case "error":
+      return `失敗：${outcome.message}`;
+  }
 }
 
 function App() {
-  const [captures, setCaptures] = useState<Capture[]>([]);
-  const [hotkeyStatus, setHotkeyStatus] = useState("registering...");
-  const [lastResult, setLastResult] = useState("");
-  const [ticks, setTicks] = useState(0);
-  const [gaps, setGaps] = useState<Gap[]>([]);
-  const lastTick = useRef(Date.now());
+  const initial = loadSettings(localStorage);
+  const [relayUrl, setRelayUrl] = useState(initial?.relayUrl ?? "");
+  const [roomSecret, setRoomSecret] = useState(initial?.roomSecret ?? "");
+  const [errors, setErrors] = useState<SettingsErrors>({});
+  const [saved, setSaved] = useState(initial !== null);
+  const [hotkeyStatus, setHotkeyStatus] = useState("註冊快捷鍵中…");
+  const [log, setLog] = useState<LogEntry[]>([]);
 
-  // Spike check 1: Alt+Q reads the clipboard.
   useEffect(() => {
-    register(HOTKEY, async (event) => {
-      if (event.state !== "Pressed") return;
-      try {
-        // Rust sends Ctrl+C to the foreground app and waits for the clipboard to change.
-        const copied = await invoke<boolean>("copy_selection");
-        if (!copied) {
-          setLastResult("Nothing copied (no selection?)");
-          return;
+    let cancelled = false;
+    let unregister: (() => Promise<void>) | undefined;
+    registerHotkeys((hotkey, outcome) =>
+      setLog((prev) => [{ at: Date.now(), hotkey, text: describe(outcome) }, ...prev].slice(0, MAX_LOG)),
+    )
+      .then((cleanup) => {
+        if (cancelled) void cleanup();
+        else {
+          unregister = cleanup;
+          setHotkeyStatus("Alt+Q 傳送選取的文字，Alt+W 傳送剪貼簿（文字或截圖）");
         }
-        const text = await readText();
-        setCaptures((prev) => [{ at: Date.now(), text }, ...prev]);
-        setLastResult("OK");
-      } catch (e) {
-        setLastResult(`Error: ${e}`);
-      }
-    })
-      .then(() => setHotkeyStatus(`${HOTKEY} registered`))
-      .catch((e) => setHotkeyStatus(`failed: ${e}`));
+      })
+      .catch((error) => setHotkeyStatus(`快捷鍵註冊失敗：${error}`));
     return () => {
-      unregister(HOTKEY).catch(() => {});
+      cancelled = true;
+      void unregister?.();
     };
   }, []);
 
-  // Spike check 2: the frontend keeps running while the window is hidden to the tray.
-  useEffect(() => {
-    const id = setInterval(() => {
-      const now = Date.now();
-      const gap = now - lastTick.current;
-      lastTick.current = now;
-      setTicks((n) => n + 1);
-      if (gap > GAP_THRESHOLD_MS) {
-        setGaps((prev) => [{ at: now, ms: gap }, ...prev]);
-      }
-    }, HEARTBEAT_MS);
-    return () => clearInterval(id);
-  }, []);
+  function save(event: Event): void {
+    event.preventDefault();
+    const result = validateSettings({ relayUrl, roomSecret });
+    if (!result.ok) {
+      setErrors(result.errors);
+      setSaved(false);
+      return;
+    }
+    saveSettings(localStorage, result.settings);
+    setRelayUrl(result.settings.relayUrl);
+    setRoomSecret(result.settings.roomSecret);
+    setErrors({});
+    setSaved(true);
+  }
 
   return (
     <main class="container">
-      <h1>pc-to-ipad spike</h1>
+      <h1>pc-to-ipad</h1>
 
       <section>
-        <h2>1. Hotkey &rarr; clipboard</h2>
-        <p>Status: {hotkeyStatus}</p>
-        <p>Select some text in any app, then press {HOTKEY}.</p>
-        <p>Last result: {lastResult || "-"}</p>
-        <ul>
-          {captures.map((c) => (
-            <li key={c.at}>
-              <small>{new Date(c.at).toLocaleTimeString()}</small>
-              <pre>{c.text}</pre>
-            </li>
-          ))}
-        </ul>
+        <h2>設定</h2>
+        <form onSubmit={save}>
+          <label>
+            中繼網址
+            <input
+              value={relayUrl}
+              onInput={(e) => setRelayUrl((e.target as HTMLInputElement).value)}
+              placeholder="https://pc-to-ipad.xxx.workers.dev"
+              spellcheck={false}
+            />
+          </label>
+          {errors.relayUrl && <p class="error">{errors.relayUrl}</p>}
+          <label>
+            房間密碼
+            <input
+              value={roomSecret}
+              onInput={(e) => setRoomSecret((e.target as HTMLInputElement).value)}
+              spellcheck={false}
+            />
+          </label>
+          {errors.roomSecret && <p class="error">{errors.roomSecret}</p>}
+          <button type="submit">儲存</button>
+          {saved && <span class="ok">已儲存</span>}
+        </form>
       </section>
 
       <section>
-        <h2>2. Hidden-window heartbeat</h2>
-        <p>
-          Ticks: {ticks} (every {HEARTBEAT_MS} ms). Close the window to hide it to the tray, wait
-          a minute, reopen from the tray menu. Throttling shows up as gaps below.
-        </p>
-        <p>Gaps over {GAP_THRESHOLD_MS} ms: {gaps.length}</p>
+        <h2>快捷鍵</h2>
+        <p>{hotkeyStatus}</p>
         <ul>
-          {gaps.map((g) => (
-            <li key={g.at}>
-              {new Date(g.at).toLocaleTimeString()}: {(g.ms / 1000).toFixed(1)} s
+          {log.map((entry) => (
+            <li key={entry.at}>
+              <small>
+                {new Date(entry.at).toLocaleTimeString()} · {entry.hotkey}
+              </small>{" "}
+              {entry.text}
             </li>
           ))}
         </ul>

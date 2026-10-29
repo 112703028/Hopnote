@@ -44,7 +44,7 @@ pub fn run() {
                 let _ = window.hide();
             }
         })
-        .invoke_handler(tauri::generate_handler![selection::copy_selection])
+        .invoke_handler(tauri::generate_handler![selection::copy_selection, selection::mask_alt_tap])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
