@@ -1,6 +1,9 @@
 import { newItemId, type Envelope, type ItemKind } from "@pc-to-ipad/protocol";
 import type { Settings } from "./settings";
 
+// A dead connection (sleep/resume, captive portal) must not hold the hotkeys for minutes.
+const REQUEST_TIMEOUT_MS = 10_000;
+
 export type SendResult = { ok: true; seq: number } | { ok: false; error: string };
 
 async function interpret(res: Response): Promise<SendResult> {
@@ -20,6 +23,7 @@ export async function sendItem(
   kind: ItemKind,
   payload: string,
   fetchImpl: typeof fetch = fetch,
+  timeoutMs = REQUEST_TIMEOUT_MS,
 ): Promise<SendResult> {
   const envelope: Envelope = { id: newItemId(), kind, payload };
   const url = `${settings.relayUrl}/room/${settings.roomSecret}/items`;
@@ -31,7 +35,7 @@ export async function sendItem(
   for (let attempt = 0; attempt < 2; attempt++) {
     let res: Response;
     try {
-      res = await fetchImpl(url, init);
+      res = await fetchImpl(url, { ...init, signal: AbortSignal.timeout(timeoutMs) });
     } catch {
       continue;
     }

@@ -1,5 +1,6 @@
 import type { ServerMessage, StoredItem } from "@pc-to-ipad/protocol";
 import { reconnectDelayMs } from "./backoff";
+import { historyQuery } from "./history";
 
 export type ConnectionStatus = "connecting" | "online" | "offline";
 
@@ -32,7 +33,7 @@ export function startFeedClient(options: FeedClientOptions): { stop(): void } {
 
   async function syncHistory(): Promise<void> {
     try {
-      const res = await fetch(`${roomPath}/history?since=${lastSeq}`);
+      const res = await fetch(`${roomPath}/history?${historyQuery(lastSeq)}`);
       if (!res.ok) return;
       const body = (await res.json()) as { items: StoredItem[] };
       if (body.items.length > 0) deliver(body.items);

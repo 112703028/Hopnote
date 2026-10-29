@@ -59,6 +59,22 @@ describe("sendItem", () => {
     expect(calls).toHaveLength(2);
   });
 
+  it("aborts a stalled request after the timeout, retries with the same id, then fails", async () => {
+    const calls: RequestInit[] = [];
+    const stalled = (async (_url: string, init: RequestInit) => {
+      calls.push(init);
+      return new Promise<Response>((_resolve, reject) => {
+        init.signal?.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError")));
+      });
+    }) as unknown as typeof fetch;
+
+    const result = await sendItem(SETTINGS, "text", "x", stalled, 20);
+
+    expect(result.ok).toBe(false);
+    expect(calls).toHaveLength(2);
+    expect(JSON.parse(String(calls[1].body)).id).toBe(JSON.parse(String(calls[0].body)).id);
+  });
+
   it("maps 413 to an error containing 'too large'", async () => {
     const { impl } = fakeFetch([new Response("{}", { status: 413 })]);
     const result = await sendItem(SETTINGS, "image", "x", impl);

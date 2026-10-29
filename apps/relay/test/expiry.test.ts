@@ -2,6 +2,7 @@ import { env } from "cloudflare:workers";
 import { runDurableObjectAlarm, runInDurableObject } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
 import { RETENTION_MS } from "@pc-to-ipad/protocol";
+import type { Room } from "../src/room";
 import { historySeqs, newRoom, post, textEnvelope } from "./helpers";
 
 function stubFor(room: string) {
@@ -26,6 +27,20 @@ describe("expiry alarm", () => {
       state.storage.getAlarm(),
     );
     expect(alarm).not.toBeNull();
+  });
+
+  it("keeps the alarm at the oldest item's expiry when a later item arrives", async () => {
+    const room = newRoom();
+    const first = (await (await post(room, textEnvelope("a"))).json()) as { receivedAt: number };
+    await runInDurableObject<Room, void>(stubFor(room), (instance) => {
+      const real = instance.clock;
+      instance.clock = () => real() + 60_000;
+    });
+    await post(room, textEnvelope("b"));
+    const alarm = await runInDurableObject(stubFor(room), (_instance, state) =>
+      state.storage.getAlarm(),
+    );
+    expect(alarm).toBe(first.receivedAt + RETENTION_MS);
   });
 
   it("removes items older than 7 days, keeps newer ones and reschedules", async () => {

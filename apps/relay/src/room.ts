@@ -102,7 +102,10 @@ export class Room extends DurableObject<Env> {
     this.acceptedAt.push(now);
 
     const { item } = insertItem(sql, result.envelope, now);
-    await this.ctx.storage.setAlarm(now + RETENTION_MS);
+    // Only when none is pending: the alarm must stay at the OLDEST item's expiry.
+    if ((await this.ctx.storage.getAlarm()) === null) {
+      await this.ctx.storage.setAlarm(now + RETENTION_MS);
+    }
     this.broadcast(item);
     return json({ seq: item.seq, receivedAt: item.receivedAt }, 201);
   }
