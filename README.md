@@ -1,4 +1,4 @@
-# pc-to-ipad
+# Hopnote
 
 Send selected text and screenshots from Windows to an iPad notes sidebar.
 Full plan: [pc-to-ipad-text-tool-plan.md](pc-to-ipad-text-tool-plan.md). Stage 1 implementation plan:
@@ -36,14 +36,14 @@ pnpm --filter desktop tauri dev
 Run the relay and web app locally:
 
 ```
-pnpm --filter @pc-to-ipad/pwa build
+pnpm --filter @hopnote/pwa build
 cd apps/relay && pnpm exec wrangler dev     # http://localhost:8787
 ```
 
 ## Deploy and set up
 
 1. Create a free Cloudflare account, then `cd apps/relay && pnpm exec wrangler login`.
-2. `pnpm deploy` builds the web app and deploys the Worker. Note the `https://pc-to-ipad.<subdomain>.workers.dev` URL.
+2. `pnpm run deploy` builds the web app and deploys the Worker. Note the `https://hopnote.<subdomain>.workers.dev` URL.
 3. `pnpm new-room-secret` prints a 32-character room secret. Treat it like a password.
 4. Desktop app: open the window, fill in the relay URL and the room secret, Save.
 5. iPad Safari: open `https://<your-worker-url>/#<room-secret>`, then Share > Add to Home Screen.

@@ -1,4 +1,4 @@
-import type { StoredItem } from "@pc-to-ipad/protocol";
+import type { StoredItem } from "@hopnote/protocol";
 
 export interface FeedState {
   /** Newest first. */

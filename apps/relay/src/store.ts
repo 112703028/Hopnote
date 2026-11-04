@@ -5,7 +5,7 @@ import {
   type Envelope,
   type ItemKind,
   type StoredItem,
-} from "@pc-to-ipad/protocol";
+} from "@hopnote/protocol";
 
 type Row = { seq: number; id: string; kind: ItemKind; payload: string; received_at: number };
 

@@ -1,5 +1,5 @@
 import { useState } from "preact/hooks";
-import { decodePayload, type StoredItem } from "@pc-to-ipad/protocol";
+import { decodePayload, type StoredItem } from "@hopnote/protocol";
 import { copyPng, copyText } from "../clipboard";
 
 // No touch or contextmenu handlers and no custom long-press: iOS must be free to

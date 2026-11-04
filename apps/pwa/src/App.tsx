@@ -59,7 +59,7 @@ export function App() {
   return (
     <main>
       <header>
-        <h1>pc-to-ipad</h1>
+        <h1>Hopnote</h1>
         <span class={`status ${status}`}>{STATUS_LABEL[status]}</span>
       </header>
       {feed.items.length === 0 && <p class="empty">還沒有內容。在電腦上選取文字後按 Alt+Q。</p>}

@@ -1,4 +1,4 @@
-import { newItemId, type Envelope, type ItemKind } from "@pc-to-ipad/protocol";
+import { newItemId, type Envelope, type ItemKind } from "@hopnote/protocol";
 import type { Settings } from "./settings";
 
 // A dead connection (sleep/resume, captive portal) must not hold the hotkeys for minutes.

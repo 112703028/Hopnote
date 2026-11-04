@@ -1,7 +1,7 @@
 import { env } from "cloudflare:workers";
 import { runDurableObjectAlarm, runInDurableObject } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
-import { RETENTION_MS } from "@pc-to-ipad/protocol";
+import { RETENTION_MS } from "@hopnote/protocol";
 import type { Room } from "../src/room";
 import { historySeqs, newRoom, post, textEnvelope } from "./helpers";
 

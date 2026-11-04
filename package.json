@@ -1,5 +1,5 @@
 {
-  "name": "pc-to-ipad",
+  "name": "hopnote",
   "private": true,
   "engines": {
     "node": ">=22"
@@ -7,7 +7,7 @@
   "scripts": {
     "test": "pnpm -r --if-present test",
     "typecheck": "pnpm -r --if-present typecheck",
-    "deploy": "pnpm --filter @pc-to-ipad/pwa build && pnpm --filter @pc-to-ipad/relay deploy",
+    "deploy": "pnpm --filter @hopnote/pwa build && pnpm --filter @hopnote/relay run deploy",
     "new-room-secret": "node scripts/new-room-secret.mjs"
   }
 }

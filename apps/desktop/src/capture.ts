@@ -1,4 +1,4 @@
-import { encodeImagePayload, encodeTextPayload, type ItemKind } from "@pc-to-ipad/protocol";
+import { encodeImagePayload, encodeTextPayload, type ItemKind } from "@hopnote/protocol";
 import type { encodeScreenshot } from "./image";
 import type { SendResult } from "./relay";
 

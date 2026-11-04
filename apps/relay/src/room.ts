@@ -9,7 +9,7 @@ import {
   validateEnvelope,
   type ServerMessage,
   type StoredItem,
-} from "@pc-to-ipad/protocol";
+} from "@hopnote/protocol";
 import {
   findItemById,
   initSchema,

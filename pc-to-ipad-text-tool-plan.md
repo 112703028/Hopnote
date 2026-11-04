@@ -412,7 +412,7 @@ nonce (24 bytes) || XChaCha20-Poly1305 密文
 - [x] 申請時程：下一輪
 - [x] Windows 端：Tauri v2（Rust 後端 + TypeScript 前端）；退路為 C#（見 6.1 節）
 - [x] iPad 前端：Vite + Preact + TypeScript（暫定，與 Tauri 前端共用工具鏈）
-- [ ] 專案名稱（候選：Slipnote；定案前需確認 GitHub / 網域未被佔用，並避開 Clip- 開頭、Sidecar、Handoff）
+- [x] 專案名稱：Hopnote（2026-11-04 定案；曾考慮 Slipnote、Scrapdrop、Paperwing、Marginalia）
 
 ---
 

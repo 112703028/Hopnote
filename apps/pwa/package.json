@@ -1,5 +1,5 @@
 {
-  "name": "@pc-to-ipad/pwa",
+  "name": "@hopnote/pwa",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -10,7 +10,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@pc-to-ipad/protocol": "workspace:*",
+    "@hopnote/protocol": "workspace:*",
     "preact": "^10.25.1"
   },
   "devDependencies": {

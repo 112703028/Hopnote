@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { newItemId } from "@pc-to-ipad/protocol";
+import { newItemId } from "@hopnote/protocol";
 import { get, historySeqs, newRoom, post, textEnvelope } from "./helpers";
 
 describe("POST /room/:id/items", () => {

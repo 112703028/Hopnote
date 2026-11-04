@@ -1,5 +1,5 @@
 import { exports } from "cloudflare:workers";
-import { encodeTextPayload, newItemId, type Envelope } from "@pc-to-ipad/protocol";
+import { encodeTextPayload, newItemId, type Envelope } from "@hopnote/protocol";
 
 const BASE = "https://relay.test";
 

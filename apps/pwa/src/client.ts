@@ -1,4 +1,4 @@
-import type { ServerMessage, StoredItem } from "@pc-to-ipad/protocol";
+import type { ServerMessage, StoredItem } from "@hopnote/protocol";
 import { reconnectDelayMs } from "./backoff";
 import { historyQuery } from "./history";
 

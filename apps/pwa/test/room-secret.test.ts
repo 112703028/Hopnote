@@ -59,6 +59,6 @@ describe("loadSecret / saveSecret", () => {
   });
 
   it("returns null for a stored value that is not a valid secret", () => {
-    expect(loadSecret(fakeStorage({ "pc-to-ipad.roomSecret": "junk" }))).toBeNull();
+    expect(loadSecret(fakeStorage({ "hopnote.roomSecret": "junk" }))).toBeNull();
   });
 });

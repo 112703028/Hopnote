@@ -73,7 +73,7 @@ function App() {
 
   return (
     <main class="container">
-      <h1>pc-to-ipad</h1>
+      <h1>Hopnote</h1>
 
       <section>
         <h2>設定</h2>
@@ -83,7 +83,7 @@ function App() {
             <input
               value={relayUrl}
               onInput={(e) => setRelayUrl((e.target as HTMLInputElement).value)}
-              placeholder="https://pc-to-ipad.xxx.workers.dev"
+              placeholder="https://hopnote.xxx.workers.dev"
               spellcheck={false}
             />
           </label>

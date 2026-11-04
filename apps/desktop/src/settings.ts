@@ -1,4 +1,4 @@
-import { isHex128 } from "@pc-to-ipad/protocol";
+import { isHex128 } from "@hopnote/protocol";
 
 export interface Settings {
   relayUrl: string;
@@ -7,7 +7,7 @@ export interface Settings {
 
 export type SettingsErrors = { relayUrl?: string; roomSecret?: string };
 
-const STORAGE_KEY = "pc-to-ipad.settings";
+const STORAGE_KEY = "hopnote.settings";
 
 // Only an origin is accepted: https, or http for local development.
 export function normalizeRelayUrl(input: string): string | null {
@@ -32,7 +32,7 @@ export function validateSettings(input: {
   const relayUrl = normalizeRelayUrl(input.relayUrl);
   const roomSecret = input.roomSecret.trim().toLowerCase();
   const errors: SettingsErrors = {};
-  if (relayUrl === null) errors.relayUrl = "需要 https 網址，例如 https://pc-to-ipad.xxx.workers.dev";
+  if (relayUrl === null) errors.relayUrl = "需要 https 網址，例如 https://hopnote.xxx.workers.dev";
   if (!isHex128(roomSecret)) errors.roomSecret = "房間密碼應為 32 個英數字元（0-9、a-f）";
   if (relayUrl === null || errors.roomSecret) return { ok: false, errors };
   return { ok: true, settings: { relayUrl, roomSecret } };

@@ -86,8 +86,8 @@ describe("loadSettings / saveSettings", () => {
   });
 
   it("returns null for corrupt JSON or invalid stored values", () => {
-    expect(loadSettings(fakeStorage({ "pc-to-ipad.settings": "{nope" }))).toBeNull();
+    expect(loadSettings(fakeStorage({ "hopnote.settings": "{nope" }))).toBeNull();
     const invalid = JSON.stringify({ relayUrl: "http://a.dev", roomSecret: "x" });
-    expect(loadSettings(fakeStorage({ "pc-to-ipad.settings": invalid }))).toBeNull();
+    expect(loadSettings(fakeStorage({ "hopnote.settings": invalid }))).toBeNull();
   });
 });

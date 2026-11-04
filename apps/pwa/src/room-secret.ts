@@ -1,6 +1,6 @@
-import { isHex128 } from "@pc-to-ipad/protocol";
+import { isHex128 } from "@hopnote/protocol";
 
-const STORAGE_KEY = "pc-to-ipad.roomSecret";
+const STORAGE_KEY = "hopnote.roomSecret";
 
 export function normalizeSecretInput(input: string): string | null {
   const secret = input.trim().toLowerCase();

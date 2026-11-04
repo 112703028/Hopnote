@@ -1,7 +1,7 @@
 import { env } from "cloudflare:workers";
 import { runInDurableObject } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
-import { RATE_LIMIT_MAX_ITEMS, RATE_LIMIT_WINDOW_MS, type Envelope } from "@pc-to-ipad/protocol";
+import { RATE_LIMIT_MAX_ITEMS, RATE_LIMIT_WINDOW_MS, type Envelope } from "@hopnote/protocol";
 import type { Room } from "../src/room";
 import { historySeqs, newRoom, post, textEnvelope } from "./helpers";
 

@@ -1,4 +1,4 @@
-import { HISTORY_MAX_LIMIT } from "@pc-to-ipad/protocol";
+import { HISTORY_MAX_LIMIT } from "@hopnote/protocol";
 
 // The first open takes the default newest page. Catching up after an absence asks
 // for the maximum page: the relay returns the newest N after `since`, so a small

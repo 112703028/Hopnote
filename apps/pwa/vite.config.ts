@@ -8,8 +8,8 @@ export default defineConfig({
     VitePWA({
       registerType: "autoUpdate",
       manifest: {
-        name: "pc-to-ipad",
-        short_name: "pc-to-ipad",
+        name: "Hopnote",
+        short_name: "Hopnote",
         display: "standalone",
         start_url: "/",
         background_color: "#f6f7f9",

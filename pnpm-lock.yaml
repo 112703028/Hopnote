@@ -10,7 +10,7 @@ importers:
 
   apps/desktop:
     dependencies:
-      '@pc-to-ipad/protocol':
+      '@hopnote/protocol':
         specifier: workspace:*
         version: link:../../packages/protocol
       '@tauri-apps/api':
@@ -47,7 +47,7 @@ importers:
 
   apps/pwa:
     dependencies:
-      '@pc-to-ipad/protocol':
+      '@hopnote/protocol':
         specifier: workspace:*
         version: link:../../packages/protocol
       preact:
@@ -72,7 +72,7 @@ importers:
 
   apps/relay:
     dependencies:
-      '@pc-to-ipad/protocol':
+      '@hopnote/protocol':
         specifier: workspace:*
         version: link:../../packages/protocol
     devDependencies:

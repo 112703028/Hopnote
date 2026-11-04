@@ -1,4 +1,4 @@
-import { isHex128 } from "@pc-to-ipad/protocol";
+import { isHex128 } from "@hopnote/protocol";
 
 export { Room } from "./room";
 

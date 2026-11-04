@@ -17,7 +17,7 @@ export function Setup({ onSecret }: { onSecret(secret: string): void }) {
 
   return (
     <main class="setup">
-      <h1>pc-to-ipad</h1>
+      <h1>Hopnote</h1>
       <p>貼上房間密碼，或用電腦端給的連結開啟。</p>
       <form onSubmit={submit}>
         <input

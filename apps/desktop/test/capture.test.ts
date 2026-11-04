@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { decodePayload, type ItemKind } from "@pc-to-ipad/protocol";
+import { decodePayload, type ItemKind } from "@hopnote/protocol";
 import { sendClipboard, sendSelection, type CaptureDeps } from "../src/capture";
 import type { SendResult } from "../src/relay";
 

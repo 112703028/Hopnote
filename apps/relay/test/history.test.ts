@@ -1,7 +1,7 @@
 import { env } from "cloudflare:workers";
 import { runInDurableObject } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
-import { MAX_IMAGE_ITEMS, MAX_TEXT_ITEMS, newItemId } from "@pc-to-ipad/protocol";
+import { MAX_IMAGE_ITEMS, MAX_TEXT_ITEMS, newItemId } from "@hopnote/protocol";
 import { get, historySeqs, newRoom, post, textEnvelope } from "./helpers";
 import { insertItem, listItems } from "../src/store";
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isHex128 } from "@pc-to-ipad/protocol";
+import { isHex128 } from "@hopnote/protocol";
 import { sendItem } from "../src/relay";
 
 const SETTINGS = {

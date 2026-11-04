@@ -1,5 +1,5 @@
 {
-  "name": "@pc-to-ipad/relay",
+  "name": "@hopnote/relay",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -9,7 +9,7 @@
     "deploy": "wrangler deploy"
   },
   "dependencies": {
-    "@pc-to-ipad/protocol": "workspace:*"
+    "@hopnote/protocol": "workspace:*"
   },
   "devDependencies": {
     "@cloudflare/vitest-plugin": "^1.4.10",

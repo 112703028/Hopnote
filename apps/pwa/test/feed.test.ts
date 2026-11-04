@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { StoredItem } from "@pc-to-ipad/protocol";
+import type { StoredItem } from "@hopnote/protocol";
 import { emptyFeed, mergeItems } from "../src/feed";
 
 function item(seq: number): StoredItem {

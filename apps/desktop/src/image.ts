@@ -1,4 +1,4 @@
-import { MAX_IMAGE_PAYLOAD_CHARS } from "@pc-to-ipad/protocol";
+import { MAX_IMAGE_PAYLOAD_CHARS } from "@hopnote/protocol";
 
 export const EDGE_LADDER = [1600, 1200, 900, 600];
 
