@@ -1,4 +1,5 @@
-import { encodeImagePayload, encodeTextPayload, type ItemKind } from "@hopnote/protocol";
+import { encodeImageFrame, encodeTextFrame } from "@hopnote/crypto";
+import type { ItemKind } from "@hopnote/protocol";
 import type { encodeScreenshot } from "./image";
 import type { SendResult } from "./relay";
 
@@ -8,7 +9,8 @@ export interface CaptureDeps {
   readText(): Promise<string | null>;
   readImage(): Promise<{ rgba: Uint8Array; width: number; height: number } | null>;
   encodeScreenshot: typeof encodeScreenshot;
-  send(kind: ItemKind, payload: string): Promise<SendResult>;
+  /** Receives the plaintext frame; sealing and posting happen behind it. */
+  send(kind: ItemKind, plaintext: Uint8Array): Promise<SendResult>;
   now(): number;
 }
 
@@ -23,9 +25,15 @@ function hasText(text: string | null): text is string {
   return text !== null && text.trim() !== "";
 }
 
-async function deliver(deps: CaptureDeps, kind: ItemKind, payload: string): Promise<CaptureOutcome> {
-  const result = await deps.send(kind, payload);
-  return result.ok ? { status: "sent", kind, seq: result.seq } : { status: "error", message: result.error };
+async function deliver(
+  deps: CaptureDeps,
+  kind: ItemKind,
+  plaintext: Uint8Array,
+): Promise<CaptureOutcome> {
+  const result = await deps.send(kind, plaintext);
+  return result.ok
+    ? { status: "sent", kind, seq: result.seq }
+    : { status: "error", message: result.error };
 }
 
 function failure(error: unknown): CaptureOutcome {
@@ -38,7 +46,7 @@ export async function sendSelection(deps: CaptureDeps): Promise<CaptureOutcome> 
     if (!(await deps.copySelection())) return { status: "nothing-copied" };
     const text = await deps.readText();
     if (!hasText(text)) return { status: "empty" };
-    return await deliver(deps, "text", encodeTextPayload(text, deps.now()));
+    return await deliver(deps, "text", encodeTextFrame(text, deps.now()));
   } catch (error) {
     return failure(error);
   }
@@ -48,13 +56,13 @@ export async function sendSelection(deps: CaptureDeps): Promise<CaptureOutcome> 
 export async function sendClipboard(deps: CaptureDeps): Promise<CaptureOutcome> {
   try {
     const text = await deps.readText();
-    if (hasText(text)) return await deliver(deps, "text", encodeTextPayload(text, deps.now()));
+    if (hasText(text)) return await deliver(deps, "text", encodeTextFrame(text, deps.now()));
 
     const image = await deps.readImage();
     if (!image) return { status: "empty" };
     const encoded = await deps.encodeScreenshot(image.rgba, image.width, image.height);
     if (!encoded) return { status: "too-large" };
-    return await deliver(deps, "image", encodeImagePayload(encoded, deps.now()));
+    return await deliver(deps, "image", encodeImageFrame(encoded, deps.now()));
   } catch (error) {
     return failure(error);
   }

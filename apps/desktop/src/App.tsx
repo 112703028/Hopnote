@@ -1,7 +1,7 @@
 import { useEffect, useState } from "preact/hooks";
 import type { CaptureOutcome } from "./capture";
 import { registerHotkeys, type Hotkey } from "./hotkeys";
-import { loadSettings, saveSettings, validateSettings, type SettingsErrors } from "./settings";
+import { loadSettings, saveSettings, validateRelayUrl } from "./settings";
 import "./App.css";
 
 const MAX_LOG = 10;
@@ -30,8 +30,7 @@ function describe(outcome: CaptureOutcome): string {
 function App() {
   const initial = loadSettings(localStorage);
   const [relayUrl, setRelayUrl] = useState(initial?.relayUrl ?? "");
-  const [roomSecret, setRoomSecret] = useState(initial?.roomSecret ?? "");
-  const [errors, setErrors] = useState<SettingsErrors>({});
+  const [relayError, setRelayError] = useState("");
   const [saved, setSaved] = useState(initial !== null);
   const [hotkeyStatus, setHotkeyStatus] = useState("註冊快捷鍵中…");
   const [log, setLog] = useState<LogEntry[]>([]);
@@ -58,16 +57,16 @@ function App() {
 
   function save(event: Event): void {
     event.preventDefault();
-    const result = validateSettings({ relayUrl, roomSecret });
+    const result = validateRelayUrl(relayUrl);
     if (!result.ok) {
-      setErrors(result.errors);
+      setRelayError(result.error);
       setSaved(false);
       return;
     }
-    saveSettings(localStorage, result.settings);
-    setRelayUrl(result.settings.relayUrl);
-    setRoomSecret(result.settings.roomSecret);
-    setErrors({});
+    // Keep an existing key; the pairing panel (next task) is what creates one.
+    saveSettings(localStorage, { relayUrl: result.relayUrl, key: loadSettings(localStorage)?.key ?? null });
+    setRelayUrl(result.relayUrl);
+    setRelayError("");
     setSaved(true);
   }
 
@@ -87,16 +86,7 @@ function App() {
               spellcheck={false}
             />
           </label>
-          {errors.relayUrl && <p class="error">{errors.relayUrl}</p>}
-          <label>
-            房間密碼
-            <input
-              value={roomSecret}
-              onInput={(e) => setRoomSecret((e.target as HTMLInputElement).value)}
-              spellcheck={false}
-            />
-          </label>
-          {errors.roomSecret && <p class="error">{errors.roomSecret}</p>}
+          {relayError && <p class="error">{relayError}</p>}
           <button type="submit">儲存</button>
           {saved && <span class="ok">已儲存</span>}
         </form>

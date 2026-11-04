@@ -3,7 +3,7 @@ import { readImage, readText } from "@tauri-apps/plugin-clipboard-manager";
 import { register, unregister } from "@tauri-apps/plugin-global-shortcut";
 import { sendClipboard, sendSelection, type CaptureDeps, type CaptureOutcome } from "./capture";
 import { encodeScreenshot } from "./image";
-import { sendItem } from "./relay";
+import { makeSender } from "./sender";
 import { loadSettings } from "./settings";
 
 export type Hotkey = "Alt+Q" | "Alt+W";
@@ -36,11 +36,7 @@ const deps: CaptureDeps = {
   readText: readClipboardText,
   readImage: readClipboardImage,
   encodeScreenshot,
-  send: async (kind, payload) => {
-    const settings = loadSettings(localStorage);
-    if (!settings) return { ok: false, error: "請先填寫中繼網址與房間密碼" };
-    return sendItem(settings, kind, payload);
-  },
+  send: makeSender({ loadSettings: () => loadSettings(localStorage) }),
   now: () => Date.now(),
 };
 

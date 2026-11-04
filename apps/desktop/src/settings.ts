@@ -1,11 +1,10 @@
-import { isHex128 } from "@hopnote/protocol";
+import { encodePairingCode, parsePairingCode } from "@hopnote/crypto";
 
 export interface Settings {
   relayUrl: string;
-  roomSecret: string;
+  /** The pairing code of the master key, or null before the first pairing. */
+  key: string | null;
 }
-
-export type SettingsErrors = { relayUrl?: string; roomSecret?: string };
 
 const STORAGE_KEY = "hopnote.settings";
 
@@ -25,29 +24,29 @@ export function normalizeRelayUrl(input: string): string | null {
   return url.origin;
 }
 
-export function validateSettings(input: {
-  relayUrl: string;
-  roomSecret: string;
-}): { ok: true; settings: Settings } | { ok: false; errors: SettingsErrors } {
-  const relayUrl = normalizeRelayUrl(input.relayUrl);
-  const roomSecret = input.roomSecret.trim().toLowerCase();
-  const errors: SettingsErrors = {};
-  if (relayUrl === null) errors.relayUrl = "需要 https 網址，例如 https://hopnote.xxx.workers.dev";
-  if (!isHex128(roomSecret)) errors.roomSecret = "房間密碼應為 32 個英數字元（0-9、a-f）";
-  if (relayUrl === null || errors.roomSecret) return { ok: false, errors };
-  return { ok: true, settings: { relayUrl, roomSecret } };
+export function validateRelayUrl(
+  input: string,
+): { ok: true; relayUrl: string } | { ok: false; error: string } {
+  const relayUrl = normalizeRelayUrl(input);
+  if (relayUrl === null) {
+    return {
+      ok: false,
+      error: "需要 https 網址本身，例如 https://hopnote.xxx.workers.dev（不要包含 /# 和配對碼）",
+    };
+  }
+  return { ok: true, relayUrl };
 }
 
 export function loadSettings(storage: Pick<Storage, "getItem">): Settings | null {
   const stored = storage.getItem(STORAGE_KEY);
   if (stored === null) return null;
   try {
-    const raw = JSON.parse(stored) as Partial<Settings> | null;
-    const result = validateSettings({
-      relayUrl: String(raw?.relayUrl ?? ""),
-      roomSecret: String(raw?.roomSecret ?? ""),
-    });
-    return result.ok ? result.settings : null;
+    const raw = JSON.parse(stored) as { relayUrl?: unknown; key?: unknown } | null;
+    const relayUrl = normalizeRelayUrl(typeof raw?.relayUrl === "string" ? raw.relayUrl : "");
+    if (relayUrl === null) return null;
+    // A stage 1 record has no key; a corrupt key is treated as not paired.
+    const master = typeof raw?.key === "string" ? parsePairingCode(raw.key) : null;
+    return { relayUrl, key: master ? encodePairingCode(master) : null };
   } catch {
     return null;
   }

@@ -1,12 +1,8 @@
 import { describe, expect, it } from "vitest";
-import {
-  loadSettings,
-  normalizeRelayUrl,
-  saveSettings,
-  validateSettings,
-} from "../src/settings";
+import { encodePairingCode } from "@hopnote/crypto";
+import { loadSettings, normalizeRelayUrl, saveSettings, validateRelayUrl } from "../src/settings";
 
-const SECRET = "0123456789abcdef0123456789abcdef";
+const CODE = encodePairingCode(Uint8Array.from({ length: 32 }, (_, i) => i));
 
 function fakeStorage(initial: Record<string, string> = {}) {
   const data = new Map(Object.entries(initial));
@@ -30,6 +26,7 @@ describe("normalizeRelayUrl", () => {
     ["a query", "https://a.dev?x=1"],
     ["a space inside the host", "https://a .dev"],
     ["embedded credentials", "https://user:pass@a.dev"],
+    ["a pasted pairing link", `https://a.dev/#${CODE}`],
     ["empty", ""],
   ])("rejects %s", (_name, input) => {
     expect(normalizeRelayUrl(input)).toBeNull();
@@ -40,54 +37,52 @@ describe("normalizeRelayUrl", () => {
   });
 });
 
-describe("validateSettings", () => {
-  it("lowercases and trims the secret and normalizes the URL", () => {
-    const result = validateSettings({
-      relayUrl: "https://a.dev/",
-      roomSecret: `  ${SECRET.toUpperCase()} `,
-    });
-    expect(result).toEqual({
-      ok: true,
-      settings: { relayUrl: "https://a.dev", roomSecret: SECRET },
-    });
+describe("validateRelayUrl", () => {
+  it("returns the normalized URL", () => {
+    expect(validateRelayUrl(" https://a.dev/ ")).toEqual({ ok: true, relayUrl: "https://a.dev" });
   });
 
-  it("rejects a secret with an inner space or the wrong length", () => {
-    const spaced = validateSettings({
-      relayUrl: "https://a.dev",
-      roomSecret: "0123456789abcdef 0123456789abcdef",
-    });
-    const short = validateSettings({ relayUrl: "https://a.dev", roomSecret: "abc" });
-    expect(spaced.ok).toBe(false);
-    expect(short.ok).toBe(false);
-    if (!short.ok) expect(short.errors.roomSecret).toBeTruthy();
-  });
-
-  it("reports the relay URL error separately from the secret error", () => {
-    const result = validateSettings({ relayUrl: "nope", roomSecret: SECRET });
+  it("explains a rejected URL", () => {
+    const result = validateRelayUrl("a.dev");
     expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.errors.relayUrl).toBeTruthy();
-      expect(result.errors.roomSecret).toBeUndefined();
-    }
+    if (!result.ok) expect(result.error).toBeTruthy();
   });
 });
 
 describe("loadSettings / saveSettings", () => {
-  it("round-trips saved settings", () => {
+  it("round-trips settings with a key", () => {
     const storage = fakeStorage();
-    const settings = { relayUrl: "https://a.dev", roomSecret: SECRET };
-    saveSettings(storage, settings);
-    expect(loadSettings(storage)).toEqual(settings);
+    saveSettings(storage, { relayUrl: "https://a.dev", key: CODE });
+    expect(loadSettings(storage)).toEqual({ relayUrl: "https://a.dev", key: CODE });
   });
 
-  it("returns null when nothing is stored", () => {
+  it("round-trips settings that are not paired yet", () => {
+    const storage = fakeStorage();
+    saveSettings(storage, { relayUrl: "https://a.dev", key: null });
+    expect(loadSettings(storage)).toEqual({ relayUrl: "https://a.dev", key: null });
+  });
+
+  it("loads a stage 1 record with roomSecret as { relayUrl, key: null }", () => {
+    const legacy = JSON.stringify({
+      relayUrl: "https://a.dev",
+      roomSecret: "0123456789abcdef0123456789abcdef",
+    });
+    const storage = fakeStorage({ "hopnote.settings": legacy });
+    expect(loadSettings(storage)).toEqual({ relayUrl: "https://a.dev", key: null });
+  });
+
+  it("turns a corrupt key into null", () => {
+    const stored = JSON.stringify({ relayUrl: "https://a.dev", key: "junk" });
+    expect(loadSettings(fakeStorage({ "hopnote.settings": stored }))).toEqual({
+      relayUrl: "https://a.dev",
+      key: null,
+    });
+  });
+
+  it("returns null for nothing stored, corrupt JSON, or an invalid relay URL", () => {
     expect(loadSettings(fakeStorage())).toBeNull();
-  });
-
-  it("returns null for corrupt JSON or invalid stored values", () => {
     expect(loadSettings(fakeStorage({ "hopnote.settings": "{nope" }))).toBeNull();
-    const invalid = JSON.stringify({ relayUrl: "http://a.dev", roomSecret: "x" });
-    expect(loadSettings(fakeStorage({ "hopnote.settings": invalid }))).toBeNull();
+    const badUrl = JSON.stringify({ relayUrl: "http://a.dev", key: CODE });
+    expect(loadSettings(fakeStorage({ "hopnote.settings": badUrl }))).toBeNull();
   });
 });

@@ -1,9 +1,6 @@
-import { MAX_IMAGE_PAYLOAD_CHARS } from "@hopnote/protocol";
+import { MAX_PNG_BYTES } from "@hopnote/crypto";
 
 export const EDGE_LADDER = [1600, 1200, 900, 600];
-
-// Room for the JSON wrapper around the base64 data.
-const WRAPPER_ALLOWANCE = 512;
 
 export function fitWithin(
   width: number,
@@ -17,21 +14,12 @@ export function fitWithin(
   };
 }
 
-function toBase64(bytes: Uint8Array): string {
-  const CHUNK = 0x8000;
-  let binary = "";
-  for (let i = 0; i < bytes.length; i += CHUNK) {
-    binary += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
-  }
-  return btoa(binary);
-}
-
-// Encodes RGBA pixels as PNG, shrinking step by step until the base64 fits the relay limit.
+// Encodes RGBA pixels as PNG, shrinking step by step until the PNG fits the relay limit.
 export async function encodeScreenshot(
   rgba: Uint8Array,
   width: number,
   height: number,
-): Promise<{ data: string; width: number; height: number } | null> {
+): Promise<{ png: Uint8Array; width: number; height: number } | null> {
   const source = new OffscreenCanvas(width, height);
   const sourceContext = source.getContext("2d");
   if (!sourceContext) return null;
@@ -50,10 +38,8 @@ export async function encodeScreenshot(
     context.imageSmoothingQuality = "high";
     context.drawImage(source, 0, 0, size.width, size.height);
     const blob = await target.convertToBlob({ type: "image/png" });
-    const data = toBase64(new Uint8Array(await blob.arrayBuffer()));
-    if (data.length <= MAX_IMAGE_PAYLOAD_CHARS - WRAPPER_ALLOWANCE) {
-      return { data, width: size.width, height: size.height };
-    }
+    const png = new Uint8Array(await blob.arrayBuffer());
+    if (png.length <= MAX_PNG_BYTES) return { png, width: size.width, height: size.height };
   }
   return null;
 }
