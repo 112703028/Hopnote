@@ -15,7 +15,8 @@ Success: the relay, its operator, and Cloudflare logs never see plaintext or any
 - G2. Pairing a device is "scan a QR code and compare a fingerprint". No password to remember.
 - G3. Wrong key, altered ciphertext, a swapped `id` or `kind`, and stale messages are rejected, with tests.
 - G4. The relay requires proof of the key (an auth token derived from it) for every request, so knowing a room ID alone is useless.
-- G5. The threat model in plan §7.4 is rewritten to describe what this stage does and does not protect.
+- G5. The threat model in plan §7.4 is rewritten to describe what this stage does and does not protect, including who serves the app (see "Trust boundary").
+- G6. The README explains how anyone can deploy their own copy, so nobody has to trust someone else's deployment.
 
 ## Non-goals
 
@@ -74,7 +75,7 @@ Not answered: whether a new device ever has to be paired with no computer at han
 
 The same Cloudflare Worker stores ciphertext and serves the iPad web app. So the key is safe from a relay that only reads what it stores, and from logs, but whoever can deploy that Worker (the owner, anyone holding the owner's Wrangler or Cloudflare credentials, Cloudflare) can ship a page that reads the key from `localStorage` or `location.hash`. The success line therefore means: the relay's stored data and logs never contain plaintext or keys. A web app cannot offer more than that unless the app is hosted somewhere more trusted than the relay.
 
-**Pending the owner's answer:** whether anyone besides the owner (for example classmates in stage 4) will use the owner's deployment. Default if not answered: the owner is the only operator; plan §7.4 states that the party who serves the app is trusted, and other users self-host.
+**Decided by the owner (2026-11-04):** everyone deploys their own copy; nobody uses another person's deployment (this includes classmates in stage 4). So each user is the sole operator of their own Worker, and plan §7.4 states that the party who serves the app is trusted. The README must document self-deployment step by step, and should recommend two-factor authentication on the Cloudflare account, since an account takeover is the remaining way to ship a malicious page.
 
 ## Things to verify first on a real iPad (before building on them)
 
