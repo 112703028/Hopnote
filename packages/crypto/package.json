@@ -1,0 +1,22 @@
+{
+  "name": "@hopnote/crypto",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "exports": {
+    ".": { "types": "./src/index.ts", "default": "./src/index.ts" },
+    "./token": { "types": "./src/token.ts", "default": "./src/token.ts" }
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@hopnote/protocol": "workspace:*",
+    "libsodium-wrappers": "^0.8.4"
+  },
+  "devDependencies": {
+    "typescript": "~6.0.3",
+    "vitest": "^5.0.5"
+  }
+}
