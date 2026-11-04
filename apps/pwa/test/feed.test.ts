@@ -41,6 +41,14 @@ describe("mergeItems", () => {
     expect(state.latestSeq).toBe(28);
   });
 
+  it("merges any item type that has a seq and a kind, such as the decrypted cards", () => {
+    type Card = { seq: number; kind: "text" | "image"; label: string };
+    const card = (seq: number): Card => ({ seq, kind: "text", label: `card ${seq}` });
+    const state = mergeItems(emptyFeed, [card(1), card(3)]);
+    const merged = mergeItems(state, [card(2), card(3)]);
+    expect(merged.items.map((c) => c.label)).toEqual(["card 3", "card 2", "card 1"]);
+  });
+
   it("does not mutate the input state", () => {
     const state = mergeItems(emptyFeed, [item(1)]);
     const snapshot = JSON.stringify(state);

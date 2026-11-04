@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@hopnote/crypto": "workspace:*",
     "@hopnote/protocol": "workspace:*",
     "preact": "^10.25.1"
   },

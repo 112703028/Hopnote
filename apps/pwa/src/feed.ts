@@ -1,15 +1,20 @@
-import { MAX_IMAGE_ITEMS, MAX_TEXT_ITEMS, type StoredItem } from "@hopnote/protocol";
+import { MAX_IMAGE_ITEMS, MAX_TEXT_ITEMS, type ItemKind, type StoredItem } from "@hopnote/protocol";
 
-export interface FeedState {
+export interface FeedItem {
+  seq: number;
+  kind: ItemKind;
+}
+
+export interface FeedState<T extends FeedItem = StoredItem> {
   /** Newest first. */
-  items: StoredItem[];
+  items: T[];
   latestSeq: number;
 }
 
-export const emptyFeed: FeedState = { items: [], latestSeq: 0 };
+export const emptyFeed: FeedState<never> = { items: [], latestSeq: 0 };
 
-export function mergeItems(state: FeedState, incoming: StoredItem[]): FeedState {
-  const bySeq = new Map<number, StoredItem>();
+export function mergeItems<T extends FeedItem>(state: FeedState<T>, incoming: T[]): FeedState<T> {
+  const bySeq = new Map<number, T>();
   for (const item of state.items) bySeq.set(item.seq, item);
   for (const item of incoming) bySeq.set(item.seq, item);
   const sorted = [...bySeq.values()].sort((a, b) => b.seq - a.seq);
