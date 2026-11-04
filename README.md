@@ -57,16 +57,20 @@ cd apps/relay && pnpm exec wrangler dev     # http://localhost:8787
 ## Pair an iPad
 
 1. Desktop app: paste your Worker URL (only the address, no path and no `#`), Save.
-2. Click **產生金鑰並配對**. A QR code and a short fingerprint appear.
+2. Click **產生金鑰並配對**. A short fingerprint and a QR code appear. The QR code contains the key, so it hides itself
+   after a minute; **顯示 QR code** brings it back.
 3. iPad: scan the QR code with the **Camera app** and open the link in Safari. The page stores the key and shows its fingerprint.
 4. Compare the two fingerprints, tap **與電腦端一致**.
-5. Add the page to the Home Screen if you like. A home-screen app may not share Safari's storage: if it asks for a code, tap
-   **複製配對碼** in Safari, then paste it into the home-screen app (or copy the code from the desktop panel).
+5. Add the page to the Home Screen if you like. A home-screen app may not share Safari's storage and cannot use the camera
+   flow: if it asks for a code, open Hopnote in Safari, tap **複製配對碼** (always in the header) and paste it into the
+   home-screen app. The code is the key: move it only through your own devices, not through a chat app.
 6. The pairing link contains the key and may stay in Safari's History. Clear that entry after pairing (Settings > Safari >
    Clear History, or delete the single entry).
 
-To add another iPad, show the same QR code again. To disconnect every device (for example a lost iPad), click
-**產生新金鑰** on the PC: it creates a new key, which is a new room, and the old one expires in 7 days.
+To add another iPad, click **顯示 QR code** again. To disconnect every device (for example a lost iPad), click
+**產生新金鑰** on the PC: it creates a new key, which is a new room, and tells the relay to retire the old room. Connected
+devices then show "電腦端已更換金鑰，請重新配對" and the old items are deleted at once. If the PC cannot reach the relay at that
+moment, the panel says so: the old devices keep their old content and the old room expires in 7 days.
 
 ## Upgrading from the unencrypted version
 

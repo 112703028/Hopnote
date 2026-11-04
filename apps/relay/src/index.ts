@@ -2,7 +2,7 @@ import { isHex128 } from "@hopnote/protocol";
 
 export { Room } from "./room";
 
-const ROUTE = /^\/room\/([^/]+)\/(items|history|ws)$/;
+const ROUTE = /^\/room\/([^/]+)\/(items|history|ws|retire)$/;
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",

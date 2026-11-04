@@ -13,8 +13,8 @@ export type DisplayItem =
       seq: number;
       kind: "image";
       ts: number;
+      /** The card that shows it creates and revokes the object URL. */
       blob: Blob;
-      url: string;
       width: number;
       height: number;
     };
@@ -61,7 +61,6 @@ function toDisplay(item: StoredItem, plaintext: Uint8Array): DisplayItem {
     kind: "image",
     ts: image.ts,
     blob,
-    url: URL.createObjectURL(blob),
     width: image.width,
     height: image.height,
   };

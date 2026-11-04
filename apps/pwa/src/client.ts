@@ -3,7 +3,7 @@ import { classifyAuthStatus } from "./auth-status";
 import { reconnectDelayMs } from "./backoff";
 import { historyQuery } from "./history";
 
-export type ConnectionStatus = "connecting" | "online" | "offline" | "unauthorized";
+export type ConnectionStatus = "connecting" | "online" | "offline" | "unauthorized" | "retired";
 
 export interface FeedClientOptions {
   roomId: string;
@@ -23,7 +23,7 @@ export function startFeedClient(options: FeedClientOptions): { stop(): void } {
 
   let socket: WebSocket | null = null;
   let stopped = false;
-  let unauthorized = false;
+  let rejected = false;
   let attempt = 0;
   let lastSeq = 0;
   let retryTimer: ReturnType<typeof setTimeout> | undefined;
@@ -35,19 +35,37 @@ export function startFeedClient(options: FeedClientOptions): { stop(): void } {
     onItems(items);
   }
 
-  // The relay rejects a key it does not know. Stop retrying and tell the user to pair again.
-  function markUnauthorized(): void {
-    unauthorized = true;
+  // The relay does not accept this key (401/403), or the PC retired the room (410): stop retrying
+  // and tell the user to pair again.
+  function markStopped(status: "unauthorized" | "retired"): void {
+    rejected = true;
     clearTimeout(retryTimer);
     stopHeartbeat();
-    onStatus("unauthorized");
+    onStatus(status);
     socket?.close();
   }
 
-  async function syncHistory(): Promise<void> {
+  function stopIfRejected(httpStatus: number): boolean {
+    const kind = classifyAuthStatus(httpStatus);
+    if (kind === "unauthorized" || kind === "retired") {
+      markStopped(kind);
+      return true;
+    }
+    return false;
+  }
+
+  // One request at a time: a reconnect and a visibility change often ask together.
+  let syncing: Promise<void> | null = null;
+  function syncHistory(): Promise<void> {
+    return (syncing ??= runSync().finally(() => {
+      syncing = null;
+    }));
+  }
+
+  async function runSync(): Promise<void> {
     try {
       const res = await fetch(`${roomPath}/history?${historyQuery(lastSeq)}`, { headers: authHeaders });
-      if (classifyAuthStatus(res.status) === "unauthorized") return markUnauthorized();
+      if (stopIfRejected(res.status)) return;
       if (!res.ok) return;
       const body = (await res.json()) as { items: StoredItem[] };
       if (body.items.length > 0) deliver(body.items);
@@ -60,7 +78,7 @@ export function startFeedClient(options: FeedClientOptions): { stop(): void } {
   async function probeAuth(): Promise<void> {
     try {
       const res = await fetch(`${roomPath}/history?since=0&limit=1`, { headers: authHeaders });
-      if (classifyAuthStatus(res.status) === "unauthorized") markUnauthorized();
+      stopIfRejected(res.status);
     } catch {
       // Network problem, not a key problem.
     }
@@ -80,7 +98,7 @@ export function startFeedClient(options: FeedClientOptions): { stop(): void } {
   }
 
   function connect(): void {
-    if (stopped || unauthorized) return;
+    if (stopped || rejected) return;
     onStatus("connecting");
     const ws = new WebSocket(wsUrl, ["hopnote.v1", `hopnote.auth.${authToken}`]);
     socket = ws;
@@ -106,8 +124,10 @@ export function startFeedClient(options: FeedClientOptions): { stop(): void } {
         // Ignore anything that is not a ServerMessage.
       }
     });
-    ws.addEventListener("close", () => {
-      if (socket !== ws || stopped || unauthorized) return;
+    ws.addEventListener("close", (event) => {
+      if (socket !== ws || stopped || rejected) return;
+      // The relay closes with 4000 when the PC retired this room.
+      if (event.code === 4000) return markStopped("retired");
       stopHeartbeat();
       onStatus("offline");
       if (!opened) void probeAuth();
@@ -117,7 +137,7 @@ export function startFeedClient(options: FeedClientOptions): { stop(): void } {
   }
 
   function onVisibilityChange(): void {
-    if (document.visibilityState !== "visible" || stopped || unauthorized) return;
+    if (document.visibilityState !== "visible" || stopped || rejected) return;
     const state = socket?.readyState;
     if (state === WebSocket.OPEN && socket) {
       probe(socket);

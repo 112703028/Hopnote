@@ -16,12 +16,15 @@ import {
   parseKeyFromHash,
   saveKey,
 } from "./pairing";
+import { takeUnseen } from "./seen";
+import { isStandaloneMode } from "./standalone";
 
 const STATUS_LABEL: Record<ConnectionStatus, string> = {
   connecting: "連線中",
   online: "已連線",
   offline: "離線",
   unauthorized: "金鑰不符，請重新配對",
+  retired: "電腦端已更換金鑰，請重新配對",
 };
 
 const NO_NOTICE: Notice = { undecryptable: 0, stale: 0, future: 0 };
@@ -81,6 +84,10 @@ export function App() {
 
   useEffect(() => {
     if (!keys) return;
+    // Everything this effect starts belongs to this key; once it is replaced, late results are dropped
+    // (item numbers from different rooms collide, so they must never meet in one feed).
+    let active = true;
+    const seen = new Set<string>();
     setFeed(emptyFeed);
     setNotice(NO_NOTICE);
     setStatus("connecting");
@@ -88,7 +95,10 @@ export function App() {
       roomId: keys.roomId,
       authToken: keys.authToken,
       onItems: (items) => {
-        void openItems(keys, items, Date.now()).then((result) => {
+        const fresh = takeUnseen(seen, items);
+        if (fresh.length === 0) return;
+        void openItems(keys, fresh, Date.now()).then((result) => {
+          if (!active) return;
           setFeed((current) => mergeItems(current, result.shown));
           setNotice((n) => ({
             undecryptable: n.undecryptable + result.undecryptable,
@@ -97,9 +107,14 @@ export function App() {
           }));
         });
       },
-      onStatus: setStatus,
+      onStatus: (next) => {
+        if (active) setStatus(next);
+      },
     });
-    return () => client.stop();
+    return () => {
+      active = false;
+      client.stop();
+    };
   }, [keys]);
 
   function pair(next: Uint8Array): void {
@@ -148,7 +163,7 @@ export function App() {
       : start.upgraded
         ? "Hopnote 已升級為加密版，請重新配對。"
         : undefined;
-    return <Setup onKey={pair} notice={message} />;
+    return <Setup onKey={pair} notice={message} standalone={isStandaloneMode(window)} />;
   }
 
   const noticeLine = noticeText(notice);
@@ -158,6 +173,10 @@ export function App() {
       <header>
         <h1>Hopnote</h1>
         <span class={`status ${status}`}>{STATUS_LABEL[status]}</span>
+        {/* Always reachable: a home-screen app has no camera flow, so the code is moved by paste. */}
+        <button type="button" class="link" onClick={copyCode}>
+          {copiedCode ? "已複製" : "複製配對碼"}
+        </button>
         <button type="button" class="link" onClick={repair}>
           重新配對
         </button>
@@ -171,9 +190,6 @@ export function App() {
           <p class="hint">配對後建議到 Safari 清除這筆歷史記錄，連結裡含有金鑰。</p>
           <button type="button" onClick={confirm}>
             與電腦端一致
-          </button>
-          <button type="button" class="link" onClick={copyCode}>
-            {copiedCode ? "已複製" : "複製配對碼"}
           </button>
         </section>
       )}

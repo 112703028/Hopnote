@@ -7,6 +7,7 @@ describe("classifyAuthStatus", () => {
     [204, "ok"],
     [401, "unauthorized"],
     [403, "unauthorized"],
+    [410, "retired"],
     [500, "unknown"],
     [0, "unknown"],
   ])("maps %i to %s", (status, expected) => {

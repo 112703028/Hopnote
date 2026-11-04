@@ -34,6 +34,20 @@ export function initSchema(sql: SqlStorage): void {
 
 const AUTH_HASH_KEY = "auth_hash";
 
+const RETIRED_KEY = "retired";
+
+export function isRetired(sql: SqlStorage): boolean {
+  return sql.exec("SELECT 1 FROM meta WHERE key = ?", RETIRED_KEY).toArray().length > 0;
+}
+
+export function markRetired(sql: SqlStorage): void {
+  sql.exec("INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)", RETIRED_KEY, "1");
+}
+
+export function deleteAllItems(sql: SqlStorage): void {
+  sql.exec("DELETE FROM items");
+}
+
 export function getAuthHash(sql: SqlStorage): string | null {
   const rows = sql.exec<{ value: string }>("SELECT value FROM meta WHERE key = ?", AUTH_HASH_KEY).toArray();
   return rows.length > 0 ? rows[0].value : null;

@@ -2,6 +2,7 @@ import { useEffect, useState } from "preact/hooks";
 import type { CaptureOutcome } from "./capture";
 import { registerHotkeys, type Hotkey } from "./hotkeys";
 import { PairingPanel } from "./PairingPanel";
+import { rotateKey } from "./rotate";
 import { loadSettings, saveSettings, validateRelayUrl, type Settings } from "./settings";
 import "./App.css";
 
@@ -28,11 +29,20 @@ function describe(outcome: CaptureOutcome): string {
   }
 }
 
+function retiredNote(retired: boolean | null): string | null {
+  if (retired === true) return "已通知中繼伺服器作廢舊房間，舊裝置會顯示「請重新配對」，舊內容已刪除。";
+  if (retired === false) {
+    return "無法通知舊房間作廢（網路問題？）。舊裝置會停在舊內容，舊房間 7 天後自動過期。";
+  }
+  return null;
+}
+
 function App() {
   const [settings, setSettings] = useState<Settings | null>(() => loadSettings(localStorage));
   const [relayUrl, setRelayUrl] = useState(settings?.relayUrl ?? "");
   const [relayError, setRelayError] = useState("");
   const [saved, setSaved] = useState(settings !== null);
+  const [pairingNote, setPairingNote] = useState<string | null>(null);
   const [hotkeyStatus, setHotkeyStatus] = useState("註冊快捷鍵中…");
   const [log, setLog] = useState<LogEntry[]>([]);
 
@@ -76,6 +86,13 @@ function App() {
     setSaved(true);
   }
 
+  async function changeKey(code: string): Promise<void> {
+    if (!settings) return;
+    const result = await rotateKey(settings, code);
+    persist(result.settings);
+    setPairingNote(retiredNote(result.retired));
+  }
+
   return (
     <main class="container">
       <h1>Hopnote</h1>
@@ -104,9 +121,8 @@ function App() {
       <PairingPanel
         relayUrl={settings?.relayUrl ?? null}
         keyCode={settings?.key ?? null}
-        onKeyChange={(code) => {
-          if (settings) persist({ relayUrl: settings.relayUrl, key: code });
-        }}
+        note={pairingNote}
+        onKeyChange={(code) => void changeKey(code)}
       />
 
       <section>

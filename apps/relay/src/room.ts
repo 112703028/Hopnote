@@ -12,12 +12,15 @@ import {
   type StoredItem,
 } from "@hopnote/protocol";
 import {
+  deleteAllItems,
   findItemById,
   getAuthHash,
   initSchema,
   insertItem,
+  isRetired,
   latestSeq,
   listItems,
+  markRetired,
   oldestReceivedAt,
   pruneItems,
   setAuthHash,
@@ -71,11 +74,14 @@ export class Room extends DurableObject<Env> {
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url);
     const route = url.pathname.split("/")[3];
-    if (route !== "items" && route !== "history" && route !== "ws") {
+    if (route !== "items" && route !== "history" && route !== "ws" && route !== "retire") {
       return json({ error: "not found" }, 404);
     }
     const denied = await this.authenticate(request, route);
     if (denied) return denied;
+    if (route === "retire") return this.handleRetire(request);
+    // The owner moved to a new key: this room is closed for good.
+    if (isRetired(this.ctx.storage.sql)) return json({ error: "retired" }, 410);
     if (route === "items") return this.handleItems(request);
     if (route === "history") return this.handleHistory(request, url);
     return this.handleWebSocket(request);
@@ -116,6 +122,23 @@ export class Room extends DurableObject<Env> {
     // An empty room schedules nothing. The table stays so AUTOINCREMENT keeps seq increasing.
     const oldest = oldestReceivedAt(sql);
     if (oldest !== null) await this.ctx.storage.setAlarm(oldest + RETENTION_MS);
+  }
+
+  // Called by the PC when it makes a new key. Purges the room and tells connected devices.
+  private async handleRetire(request: Request): Promise<Response> {
+    if (request.method !== "POST") return json({ error: "method not allowed" }, 405);
+    const sql = this.ctx.storage.sql;
+    deleteAllItems(sql);
+    markRetired(sql);
+    await this.ctx.storage.deleteAlarm();
+    for (const ws of this.ctx.getWebSockets()) {
+      try {
+        ws.close(4000, "retired");
+      } catch {
+        // already closed
+      }
+    }
+    return json({ ok: true });
   }
 
   private async handleItems(request: Request): Promise<Response> {

@@ -9,6 +9,8 @@ export interface RelayTarget {
   authToken: string;
 }
 
+const RETIRE_TIMEOUT_MS = 5_000;
+
 export type SendResult = { ok: true; seq: number } | { ok: false; error: string };
 
 async function interpret(res: Response): Promise<SendResult> {
@@ -51,4 +53,25 @@ export async function sendItem(
     return interpret(res);
   }
   return { ok: false, error: "無法連線到中繼伺服器" };
+}
+
+/**
+ * Tells the relay that this room is being left behind (the PC made a new key): it deletes the
+ * items and tells connected devices to pair again. Best effort: false means it did not happen.
+ */
+export async function retireRoom(
+  target: RelayTarget,
+  fetchImpl: typeof fetch = fetch,
+  timeoutMs = RETIRE_TIMEOUT_MS,
+): Promise<boolean> {
+  try {
+    const res = await fetchImpl(`${target.relayUrl}/room/${target.roomId}/retire`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${target.authToken}` },
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
 }

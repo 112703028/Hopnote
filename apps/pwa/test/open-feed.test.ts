@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 import { RETENTION_MS, type ItemKind, type StoredItem } from "@hopnote/protocol";
 import {
   deriveKeys,
@@ -39,7 +39,8 @@ describe("openItems", () => {
     expect(result).toMatchObject({ undecryptable: 0, stale: 0, future: 0 });
   });
 
-  it("shows a sealed image item with a PNG Blob and a blob: URL", async () => {
+  it("shows a sealed image item with a PNG Blob and creates no object URL itself", async () => {
+    const create = vi.spyOn(URL, "createObjectURL");
     const item = await stored(2, "image", encodeImageFrame({ png: PNG, width: 3, height: 2 }, NOW));
     const { shown } = await openItems(keys, [item], NOW);
     expect(shown).toHaveLength(1);
@@ -48,9 +49,12 @@ describe("openItems", () => {
     if (image.kind === "image") {
       expect(image.blob.type).toBe("image/png");
       expect(image.blob.size).toBe(PNG.length);
-      expect(image.url.startsWith("blob:")).toBe(true);
+      expect("url" in image).toBe(false);
       expect([image.width, image.height]).toEqual([3, 2]);
     }
+    // The card that shows the image owns the URL and revokes it when it goes away.
+    expect(create).not.toHaveBeenCalled();
+    create.mockRestore();
   });
 
   it("counts an item sealed with another key as undecryptable", async () => {
