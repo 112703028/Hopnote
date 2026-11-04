@@ -1,7 +1,8 @@
 import { useEffect, useState } from "preact/hooks";
 import type { CaptureOutcome } from "./capture";
 import { registerHotkeys, type Hotkey } from "./hotkeys";
-import { loadSettings, saveSettings, validateRelayUrl } from "./settings";
+import { PairingPanel } from "./PairingPanel";
+import { loadSettings, saveSettings, validateRelayUrl, type Settings } from "./settings";
 import "./App.css";
 
 const MAX_LOG = 10;
@@ -28,10 +29,10 @@ function describe(outcome: CaptureOutcome): string {
 }
 
 function App() {
-  const initial = loadSettings(localStorage);
-  const [relayUrl, setRelayUrl] = useState(initial?.relayUrl ?? "");
+  const [settings, setSettings] = useState<Settings | null>(() => loadSettings(localStorage));
+  const [relayUrl, setRelayUrl] = useState(settings?.relayUrl ?? "");
   const [relayError, setRelayError] = useState("");
-  const [saved, setSaved] = useState(initial !== null);
+  const [saved, setSaved] = useState(settings !== null);
   const [hotkeyStatus, setHotkeyStatus] = useState("註冊快捷鍵中…");
   const [log, setLog] = useState<LogEntry[]>([]);
 
@@ -55,7 +56,12 @@ function App() {
     };
   }, []);
 
-  function save(event: Event): void {
+  function persist(next: Settings): void {
+    saveSettings(localStorage, next);
+    setSettings(next);
+  }
+
+  function saveRelayUrl(event: Event): void {
     event.preventDefault();
     const result = validateRelayUrl(relayUrl);
     if (!result.ok) {
@@ -63,8 +69,8 @@ function App() {
       setSaved(false);
       return;
     }
-    // Keep an existing key; the pairing panel (next task) is what creates one.
-    saveSettings(localStorage, { relayUrl: result.relayUrl, key: loadSettings(localStorage)?.key ?? null });
+    // A different relay is a different room: keep the key, which decides the room.
+    persist({ relayUrl: result.relayUrl, key: settings?.key ?? null });
     setRelayUrl(result.relayUrl);
     setRelayError("");
     setSaved(true);
@@ -75,13 +81,16 @@ function App() {
       <h1>Hopnote</h1>
 
       <section>
-        <h2>設定</h2>
-        <form onSubmit={save}>
+        <h2>中繼網址</h2>
+        <form onSubmit={saveRelayUrl}>
           <label>
-            中繼網址
+            你部署的 Worker 網址
             <input
               value={relayUrl}
-              onInput={(e) => setRelayUrl((e.target as HTMLInputElement).value)}
+              onInput={(e) => {
+                setRelayUrl((e.target as HTMLInputElement).value);
+                setSaved(false);
+              }}
               placeholder="https://hopnote.xxx.workers.dev"
               spellcheck={false}
             />
@@ -91,6 +100,14 @@ function App() {
           {saved && <span class="ok">已儲存</span>}
         </form>
       </section>
+
+      <PairingPanel
+        relayUrl={settings?.relayUrl ?? null}
+        keyCode={settings?.key ?? null}
+        onKeyChange={(code) => {
+          if (settings) persist({ relayUrl: settings.relayUrl, key: code });
+        }}
+      />
 
       <section>
         <h2>快捷鍵</h2>
