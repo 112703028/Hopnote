@@ -27,7 +27,7 @@ Success: the relay, its operator, and Cloudflare logs never see plaintext or any
 
 ## Anti-goals (a failure even if it technically works)
 
-- The key or token appears in a URL that is sent to a server, in relay logs, in browser history left behind, or in git.
+- The key or token is sent to any server, appears in relay or Cloudflare logs, or is committed to git. (Safari's own History may keep the pairing link; see "My calls" and the threat model.)
 - Encryption makes the daily flow slower or needs extra taps.
 - Images get larger on the wire than today (no double base64).
 - A silent failure: a message that cannot be decrypted simply vanishes with no hint.
@@ -52,13 +52,14 @@ Not answered: whether a new device ever has to be paired with no computer at han
 - **Message format.** Envelope on the relay stays `{id, kind, payload}`. `payload = base64url(nonce(24) || ciphertext || tag)`. AEAD associated data = UTF-8 `hopnote/v1|<kind>|<id>`, so the relay cannot move a ciphertext to another `id` or change its `kind`.
   Plaintext, text: UTF-8 JSON `{"v":1,"text":…,"ts":…}`. Plaintext, image: `u32be metaLength || meta JSON {"v":1,"mime":"image/png","width":W,"height":H,"ts":T} || raw PNG bytes`.
 - **Staleness.** The receiver drops items whose `ts` (inside the ciphertext) is older than 7 days or more than 10 minutes in the future.
-- **Relay auth.** `Authorization: Bearer <token>` on HTTP routes. For the WebSocket, the token travels in `Sec-WebSocket-Protocol: hopnote.<token>` (browsers cannot set headers on a WebSocket; base64url characters are valid in a subprotocol) so it never appears in a URL; the relay echoes the selected subprotocol. If this does not work on iOS Safari or Workers, fall back to authenticating with the first WebSocket message.
+- **Relay auth.** `Authorization: Bearer <token>` on HTTP routes. For the WebSocket, the token travels in `Sec-WebSocket-Protocol: hopnote.v1, hopnote.auth.<token>` (browsers cannot set headers on a WebSocket; base64url characters are valid in a subprotocol) so it never appears in a URL; the client offers two subprotocols, `hopnote.v1` and `hopnote.auth.<token>`, and the relay selects and echoes `hopnote.v1`, so the token never appears in any response. If this does not work on iOS Safari or Workers, fall back to authenticating with the first WebSocket message.
 - **Token binding.** The first authenticated request for a room stores SHA-256(token) in the Room Durable Object; every later request must match (constant-time compare). Missing token: 401. Mismatch: 403. The token is never logged.
 - **New package.** `packages/crypto` (`@hopnote/crypto`): key generation, derivation, encrypt/decrypt, fingerprint, pairing code/link parsing. The relay imports only the token-hash helper, so the Worker does not bundle libsodium. Clients use `libsodium-wrappers` for the AEAD; HKDF and SHA-256 use WebCrypto.
 - **Key storage.** PC: `localStorage` key `hopnote.key` in the WebView2 profile (stage 2 default; Windows DPAPI via Rust is a later hardening). iPad: `localStorage`. The stage 1 setting `roomSecret` is dropped; settings become `{relayUrl, key}`.
+- **Safari History.** The pairing link may stay in Safari's History (and iCloud-synced history) after the Camera app opens it; `replaceState` only rewrites the current entry. Decision 2 (QR link) wins over a history-free flow: anyone who can read the owner's Safari history already has the unlocked iPad, where the stored key and the decrypted cards are equally readable. The threat model records this; the app tells the owner to clear that history entry after pairing; the text code remains for those who prefer it.
 - **Fingerprint UX.** Both screens show it; the iPad has a "matches the PC" confirm button that only records that the owner checked. It is a sanity check against a wrong or misread QR, not a defence against an active attacker, because the key itself travels in the QR.
-- **Undecryptable items.** The iPad shows a small notice, "N items could not be decrypted (wrong key?)", instead of dropping them silently.
-- **Text capacity.** Base64 inflation shrinks plaintext capacity. Keep at least today's capacity: raise the text payload character limit so plaintext capacity is at least 64 KB (about 90,000 payload characters); the image limit stays 1,500,000 payload characters, about 1.1 MB of PNG.
+- **Items that cannot be shown.** The iPad shows one small notice, for example "2 items could not be decrypted (wrong key?), 1 was too old or from a wrong clock", instead of dropping any item silently. The same applies to items rejected as stale or clock-skewed.
+- **Text capacity.** Today's limit is 64K characters of JSON, which holds about 64K Chinese characters. After encryption a Chinese character is 3 bytes and base64 adds a third, so keep today's capacity in characters by raising `MAX_TEXT_PAYLOAD_CHARS` to 262,144 (about 65K Chinese characters, 196 KB of plaintext; still far below the 2 MB SQLite row limit). The image limit stays 1,500,000 payload characters, about 1.1 MB of PNG.
 - **CORS.** `*` is acceptable once the token (not the URL) is the credential; tightening to the desktop webview origins is optional and must be checked against the real `Origin` header first.
 
 ## Constraints (how the current system works)
@@ -68,6 +69,12 @@ Not answered: whether a new device ever has to be paired with no computer at han
 - Desktop: hotkey handlers build a plaintext frame in `src/capture.ts` and send through `src/relay.ts`; settings are in `localStorage` (`hopnote.settings`). The webview CSP already allows `'wasm-unsafe-eval'` (libsodium WASM) and `https:` for `connect-src`.
 - PWA: reads the secret from `location.hash`, stores it, then `history.replaceState`; cards decode payloads through `decodeCached`.
 - Deployed at `https://hopnote.pc-to-ipad-relay.workers.dev` (Cloudflare free plan). Wrangler auth is the owner's. Deploying and pushing need the owner's go-ahead.
+
+## Trust boundary: who serves the app
+
+The same Cloudflare Worker stores ciphertext and serves the iPad web app. So the key is safe from a relay that only reads what it stores, and from logs, but whoever can deploy that Worker (the owner, anyone holding the owner's Wrangler or Cloudflare credentials, Cloudflare) can ship a page that reads the key from `localStorage` or `location.hash`. The success line therefore means: the relay's stored data and logs never contain plaintext or keys. A web app cannot offer more than that unless the app is hosted somewhere more trusted than the relay.
+
+**Pending the owner's answer:** whether anyone besides the owner (for example classmates in stage 4) will use the owner's deployment. Default if not answered: the owner is the only operator; plan §7.4 states that the party who serves the app is trusted, and other users self-host.
 
 ## Things to verify first on a real iPad (before building on them)
 
