@@ -1,80 +1,184 @@
 import { useEffect, useState } from "preact/hooks";
+import { deriveKeys, encodePairingCode, type DerivedKeys } from "@hopnote/crypto";
 import { Card } from "./components/Card";
 import { Setup } from "./components/Setup";
 import { startFeedClient, type ConnectionStatus } from "./client";
+import { copyText } from "./clipboard";
 import { emptyFeed, mergeItems, type FeedState } from "./feed";
-import { clearSecret, loadSecret, parseSecretFromHash, saveSecret } from "./room-secret";
+import { noticeText, type Notice } from "./notice";
+import { openItems, type DisplayItem } from "./open-feed";
+import {
+  clearKey,
+  confirmFingerprint,
+  discardLegacySecret,
+  isFingerprintConfirmed,
+  loadKey,
+  parseKeyFromHash,
+  saveKey,
+} from "./pairing";
 
 const STATUS_LABEL: Record<ConnectionStatus, string> = {
   connecting: "連線中",
   online: "已連線",
   offline: "離線",
+  unauthorized: "金鑰不符，請重新配對",
 };
 
-function initialSecret(): string | null {
+const NO_NOTICE: Notice = { undecryptable: 0, stale: 0, future: 0 };
+
+interface Start {
+  master: Uint8Array | null;
+  upgraded: boolean;
+  badLink: boolean;
+}
+
+function readStart(): Start {
+  const hadHash = location.hash.length > 1;
   try {
-    const fromHash = parseSecretFromHash(location.hash);
+    const upgraded = discardLegacySecret(localStorage);
+    const fromHash = parseKeyFromHash(location.hash);
+    if (hadHash) history.replaceState(null, "", location.pathname);
     if (fromHash) {
-      saveSecret(localStorage, fromHash);
-      history.replaceState(null, "", location.pathname);
-      return fromHash;
+      saveKey(localStorage, fromHash);
+      return { master: fromHash, upgraded, badLink: false };
     }
-    return loadSecret(localStorage);
+    return { master: loadKey(localStorage), upgraded, badLink: hadHash };
   } catch {
-    // Storage can be blocked; fall back to whatever the link carried.
-    return parseSecretFromHash(location.hash);
+    // Storage can be blocked; use whatever the link carried for this session only.
+    return { master: parseKeyFromHash(location.hash), upgraded: false, badLink: false };
   }
 }
 
 export function App() {
-  const [secret, setSecret] = useState<string | null>(initialSecret);
-  const [feed, setFeed] = useState<FeedState>(emptyFeed);
+  const [start] = useState(readStart);
+  const [master, setMaster] = useState<Uint8Array | null>(start.master);
+  const [keys, setKeys] = useState<DerivedKeys | null>(null);
+  const [feed, setFeed] = useState<FeedState<DisplayItem>>(emptyFeed);
   const [status, setStatus] = useState<ConnectionStatus>("connecting");
+  const [notice, setNotice] = useState<Notice>(NO_NOTICE);
+  const [confirmed, setConfirmed] = useState(false);
+  const [copiedCode, setCopiedCode] = useState(false);
 
   useEffect(() => {
-    if (!secret) return;
+    if (!master) {
+      setKeys(null);
+      return;
+    }
+    let cancelled = false;
+    void deriveKeys(master).then((derived) => {
+      if (cancelled) return;
+      setKeys(derived);
+      try {
+        setConfirmed(isFingerprintConfirmed(localStorage, derived.fingerprint));
+      } catch {
+        setConfirmed(false);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [master]);
+
+  useEffect(() => {
+    if (!keys) return;
+    setFeed(emptyFeed);
+    setNotice(NO_NOTICE);
+    setStatus("connecting");
     const client = startFeedClient({
-      secret,
-      onItems: (items) => setFeed((current) => mergeItems(current, items)),
+      roomId: keys.roomId,
+      authToken: keys.authToken,
+      onItems: (items) => {
+        void openItems(keys, items, Date.now()).then((result) => {
+          setFeed((current) => mergeItems(current, result.shown));
+          setNotice((n) => ({
+            undecryptable: n.undecryptable + result.undecryptable,
+            stale: n.stale + result.stale,
+            future: n.future + result.future,
+          }));
+        });
+      },
       onStatus: setStatus,
     });
     return () => client.stop();
-  }, [secret]);
+  }, [keys]);
 
-  function changeRoom(): void {
+  function pair(next: Uint8Array): void {
     try {
-      clearSecret(localStorage);
+      saveKey(localStorage, next);
     } catch {
-      // Storage blocked: the secret was never persisted anyway.
+      // Not persisted; the next launch asks again.
     }
-    setFeed(emptyFeed);
-    setSecret(null);
+    setMaster(next);
   }
 
-  if (!secret) {
-    return (
-      <Setup
-        onSecret={(value) => {
-          try {
-            saveSecret(localStorage, value);
-          } catch {
-            // Not persisted; the next launch asks again.
-          }
-          setSecret(value);
-        }}
-      />
-    );
+  function repair(): void {
+    try {
+      clearKey(localStorage);
+    } catch {
+      // Storage blocked: nothing was persisted anyway.
+    }
+    setMaster(null);
+    setFeed(emptyFeed);
   }
+
+  function confirm(): void {
+    if (!keys) return;
+    try {
+      confirmFingerprint(localStorage, keys.fingerprint);
+    } catch {
+      // Not persisted; the banner shows again next launch.
+    }
+    setConfirmed(true);
+  }
+
+  async function copyCode(): Promise<void> {
+    if (!master) return;
+    try {
+      await copyText(encodePairingCode(master));
+      setCopiedCode(true);
+      setTimeout(() => setCopiedCode(false), 1500);
+    } catch {
+      // Clipboard access denied.
+    }
+  }
+
+  if (!master) {
+    const message = start.badLink
+      ? "連結裡的配對碼無效，請重新掃描或貼上配對碼。"
+      : start.upgraded
+        ? "Hopnote 已升級為加密版，請重新配對。"
+        : undefined;
+    return <Setup onKey={pair} notice={message} />;
+  }
+
+  const noticeLine = noticeText(notice);
 
   return (
     <main>
       <header>
         <h1>Hopnote</h1>
         <span class={`status ${status}`}>{STATUS_LABEL[status]}</span>
-        <button type="button" class="link" onClick={changeRoom}>
-          更換房間
+        <button type="button" class="link" onClick={repair}>
+          重新配對
         </button>
       </header>
+
+      {keys && !confirmed && (
+        <section class="banner">
+          <p>
+            指紋 <strong>{keys.fingerprint}</strong>，請確認和電腦端畫面上的一樣。
+          </p>
+          <p class="hint">配對後建議到 Safari 清除這筆歷史記錄，連結裡含有金鑰。</p>
+          <button type="button" onClick={confirm}>
+            與電腦端一致
+          </button>
+          <button type="button" class="link" onClick={copyCode}>
+            {copiedCode ? "已複製" : "複製配對碼"}
+          </button>
+        </section>
+      )}
+
+      {noticeLine && <p class="notice">{noticeLine}</p>}
       {feed.items.length === 0 && <p class="empty">還沒有內容。在電腦上選取文字後按 Alt+Q。</p>}
       <ul>
         {feed.items.map((item) => (

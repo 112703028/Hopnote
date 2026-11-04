@@ -128,3 +128,24 @@ li + li {
   font-size: 0.8rem;
   padding: 4px;
 }
+
+.banner {
+  background: var(--card);
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-top: 12px;
+}
+
+.banner p {
+  margin: 0 0 6px;
+}
+
+.hint {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.notice {
+  color: var(--warn);
+  font-size: 0.9rem;
+}

@@ -1,11 +1,13 @@
 import type { ServerMessage, StoredItem } from "@hopnote/protocol";
+import { classifyAuthStatus } from "./auth-status";
 import { reconnectDelayMs } from "./backoff";
 import { historyQuery } from "./history";
 
-export type ConnectionStatus = "connecting" | "online" | "offline";
+export type ConnectionStatus = "connecting" | "online" | "offline" | "unauthorized";
 
 export interface FeedClientOptions {
-  secret: string;
+  roomId: string;
+  authToken: string;
   onItems(items: StoredItem[]): void;
   onStatus(status: ConnectionStatus): void;
 }
@@ -14,12 +16,14 @@ const PING_INTERVAL_MS = 25_000;
 const PONG_TIMEOUT_MS = 10_000;
 
 export function startFeedClient(options: FeedClientOptions): { stop(): void } {
-  const { secret, onItems, onStatus } = options;
-  const roomPath = `/room/${secret}`;
+  const { roomId, authToken, onItems, onStatus } = options;
+  const roomPath = `/room/${roomId}`;
   const wsUrl = `${location.protocol === "https:" ? "wss:" : "ws:"}//${location.host}${roomPath}/ws`;
+  const authHeaders = { Authorization: `Bearer ${authToken}` };
 
   let socket: WebSocket | null = null;
   let stopped = false;
+  let unauthorized = false;
   let attempt = 0;
   let lastSeq = 0;
   let retryTimer: ReturnType<typeof setTimeout> | undefined;
@@ -31,14 +35,34 @@ export function startFeedClient(options: FeedClientOptions): { stop(): void } {
     onItems(items);
   }
 
+  // The relay rejects a key it does not know. Stop retrying and tell the user to pair again.
+  function markUnauthorized(): void {
+    unauthorized = true;
+    clearTimeout(retryTimer);
+    stopHeartbeat();
+    onStatus("unauthorized");
+    socket?.close();
+  }
+
   async function syncHistory(): Promise<void> {
     try {
-      const res = await fetch(`${roomPath}/history?${historyQuery(lastSeq)}`);
+      const res = await fetch(`${roomPath}/history?${historyQuery(lastSeq)}`, { headers: authHeaders });
+      if (classifyAuthStatus(res.status) === "unauthorized") return markUnauthorized();
       if (!res.ok) return;
       const body = (await res.json()) as { items: StoredItem[] };
       if (body.items.length > 0) deliver(body.items);
     } catch {
       // Offline: the next reconnect syncs again.
+    }
+  }
+
+  // A browser hides the HTTP status of a failed WebSocket handshake, so ask the history route.
+  async function probeAuth(): Promise<void> {
+    try {
+      const res = await fetch(`${roomPath}/history?since=0&limit=1`, { headers: authHeaders });
+      if (classifyAuthStatus(res.status) === "unauthorized") markUnauthorized();
+    } catch {
+      // Network problem, not a key problem.
     }
   }
 
@@ -56,12 +80,14 @@ export function startFeedClient(options: FeedClientOptions): { stop(): void } {
   }
 
   function connect(): void {
-    if (stopped) return;
+    if (stopped || unauthorized) return;
     onStatus("connecting");
-    const ws = new WebSocket(wsUrl);
+    const ws = new WebSocket(wsUrl, ["hopnote.v1", `hopnote.auth.${authToken}`]);
     socket = ws;
+    let opened = false;
 
     ws.addEventListener("open", () => {
+      opened = true;
       attempt = 0;
       onStatus("online");
       void syncHistory();
@@ -81,16 +107,17 @@ export function startFeedClient(options: FeedClientOptions): { stop(): void } {
       }
     });
     ws.addEventListener("close", () => {
-      if (socket !== ws || stopped) return;
+      if (socket !== ws || stopped || unauthorized) return;
       stopHeartbeat();
       onStatus("offline");
+      if (!opened) void probeAuth();
       retryTimer = setTimeout(connect, reconnectDelayMs(attempt++));
     });
     ws.addEventListener("error", () => ws.close());
   }
 
   function onVisibilityChange(): void {
-    if (document.visibilityState !== "visible" || stopped) return;
+    if (document.visibilityState !== "visible" || stopped || unauthorized) return;
     const state = socket?.readyState;
     if (state === WebSocket.OPEN && socket) {
       probe(socket);

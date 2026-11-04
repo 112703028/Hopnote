@@ -1,20 +1,16 @@
 import { useState } from "preact/hooks";
-import type { StoredItem } from "@hopnote/protocol";
 import { copyPng, copyText } from "../clipboard";
-import { decodeCached } from "../decode-cache";
+import type { DisplayItem } from "../open-feed";
 
 // No touch or contextmenu handlers and no custom long-press: iOS must be free to
 // start its own text selection and image drag.
-export function Card({ item }: { item: StoredItem }) {
+export function Card({ item }: { item: DisplayItem }) {
   const [copied, setCopied] = useState(false);
-  const payload = decodeCached(item);
-  if (!payload) return null;
 
   async function copy(): Promise<void> {
-    if (!payload) return;
     try {
       // copyPng must be called before any await so the write stays in the tap gesture.
-      await ("text" in payload ? copyText(payload.text) : copyPng(payload.data));
+      await (item.kind === "text" ? copyText(item.text) : copyPng(item.blob));
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     } catch {
@@ -24,17 +20,12 @@ export function Card({ item }: { item: StoredItem }) {
 
   return (
     <article class="card" onClick={copy}>
-      <time>{new Date(item.receivedAt).toLocaleTimeString()}</time>
+      <time>{new Date(item.ts).toLocaleTimeString()}</time>
       {copied && <span class="copied">已複製</span>}
-      {"text" in payload ? (
-        <p class="text">{payload.text}</p>
+      {item.kind === "text" ? (
+        <p class="text">{item.text}</p>
       ) : (
-        <img
-          src={`data:image/png;base64,${payload.data}`}
-          width={payload.width}
-          height={payload.height}
-          alt="截圖"
-        />
+        <img src={item.url} width={item.width} height={item.height} alt="截圖" />
       )}
     </article>
   );

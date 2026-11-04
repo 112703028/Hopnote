@@ -1,24 +1,32 @@
 import { useState } from "preact/hooks";
-import { normalizeSecretInput } from "../room-secret";
+import { parsePairingCode } from "@hopnote/crypto";
 
-export function Setup({ onSecret }: { onSecret(secret: string): void }) {
+export function Setup({
+  onKey,
+  notice,
+}: {
+  onKey(master: Uint8Array): void;
+  /** Shown above the form, e.g. after an upgrade from the unencrypted version. */
+  notice?: string;
+}) {
   const [value, setValue] = useState("");
   const [error, setError] = useState("");
 
   function submit(event: Event): void {
     event.preventDefault();
-    const secret = normalizeSecretInput(value);
-    if (secret) {
-      onSecret(secret);
+    const master = parsePairingCode(value);
+    if (master) {
+      onKey(master);
     } else {
-      setError("房間密碼應為 32 個英數字元（0-9、a-f）");
+      setError("配對碼格式不正確，請重新複製");
     }
   }
 
   return (
     <main class="setup">
       <h1>Hopnote</h1>
-      <p>貼上房間密碼，或用電腦端給的連結開啟。</p>
+      {notice && <p class="notice">{notice}</p>}
+      <p>用電腦端畫面上的 QR code 配對：用 iPad 的相機掃描並在 Safari 打開，或貼上配對碼。</p>
       <form onSubmit={submit}>
         <input
           value={value}
@@ -26,9 +34,9 @@ export function Setup({ onSecret }: { onSecret(secret: string): void }) {
           autocapitalize="off"
           autocomplete="off"
           spellcheck={false}
-          placeholder="房間密碼"
+          placeholder="配對碼或連結"
         />
-        <button type="submit">儲存</button>
+        <button type="submit">配對</button>
       </form>
       {error && <p class="error">{error}</p>}
     </main>
