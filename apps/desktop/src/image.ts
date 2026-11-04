@@ -47,6 +47,7 @@ export async function encodeScreenshot(
     const target = new OffscreenCanvas(size.width, size.height);
     const context = target.getContext("2d");
     if (!context) return null;
+    context.imageSmoothingQuality = "high";
     context.drawImage(source, 0, 0, size.width, size.height);
     const blob = await target.convertToBlob({ type: "image/png" });
     const data = toBase64(new Uint8Array(await blob.arrayBuffer()));

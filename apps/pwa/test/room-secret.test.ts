@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  clearSecret,
   loadSecret,
   normalizeSecretInput,
   parseSecretFromHash,
@@ -14,6 +15,9 @@ function fakeStorage(initial: Record<string, string> = {}) {
     getItem: (key: string) => data.get(key) ?? null,
     setItem: (key: string, value: string) => {
       data.set(key, value);
+    },
+    removeItem: (key: string) => {
+      data.delete(key);
     },
   };
 }
@@ -52,6 +56,13 @@ describe("loadSecret / saveSecret", () => {
     const storage = fakeStorage();
     saveSecret(storage, SECRET);
     expect(loadSecret(storage)).toBe(SECRET);
+  });
+
+  it("forgets the secret after clearSecret", () => {
+    const storage = fakeStorage();
+    saveSecret(storage, SECRET);
+    clearSecret(storage);
+    expect(loadSecret(storage)).toBeNull();
   });
 
   it("returns null when nothing is stored", () => {

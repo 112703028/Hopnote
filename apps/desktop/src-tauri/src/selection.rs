@@ -64,7 +64,7 @@ fn mask_alt_if_down() -> Result<(), String> {
 fn send_copy_and_wait() -> Result<bool, String> {
     mask_alt_if_down()?;
     if !wait_until(|| HOTKEY_KEYS.iter().all(|k| !is_down(*k)), KEY_RELEASE_TIMEOUT) {
-        return Err("hotkey keys were not released in time".to_string());
+        return Err("快捷鍵放開逾時".to_string());
     }
 
     let before = clipboard_sequence();
@@ -132,7 +132,10 @@ fn send_inputs(inputs: &[INPUT]) -> Result<(), String> {
         Ok(())
     } else {
         // Typically the foreground window runs as administrator (UIPI blocks us).
-        Err(format!("SendInput sent {sent} of {} events", inputs.len()))
+        Err(format!(
+            "SendInput 只送出 {sent}/{} 個按鍵事件；前景程式可能以系統管理員身分執行",
+            inputs.len()
+        ))
     }
 }
 

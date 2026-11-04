@@ -13,6 +13,13 @@ describe("CORS", () => {
     expect(res.headers.get("access-control-allow-headers")).toBe("Content-Type");
   });
 
+  it("lets the browser cache the preflight for two hours", async () => {
+    const res = await exports.default.fetch(
+      new Request(`https://relay.test/room/${newRoom()}/items`, { method: "OPTIONS" }),
+    );
+    expect(res.headers.get("access-control-max-age")).toBe("7200");
+  });
+
   it("adds access-control-allow-origin to POST and GET responses", async () => {
     const room = newRoom();
     expect((await post(room, textEnvelope())).headers.get("access-control-allow-origin")).toBe("*");

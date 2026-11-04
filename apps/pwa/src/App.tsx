@@ -3,7 +3,7 @@ import { Card } from "./components/Card";
 import { Setup } from "./components/Setup";
 import { startFeedClient, type ConnectionStatus } from "./client";
 import { emptyFeed, mergeItems, type FeedState } from "./feed";
-import { loadSecret, parseSecretFromHash, saveSecret } from "./room-secret";
+import { clearSecret, loadSecret, parseSecretFromHash, saveSecret } from "./room-secret";
 
 const STATUS_LABEL: Record<ConnectionStatus, string> = {
   connecting: "連線中",
@@ -41,6 +41,16 @@ export function App() {
     return () => client.stop();
   }, [secret]);
 
+  function changeRoom(): void {
+    try {
+      clearSecret(localStorage);
+    } catch {
+      // Storage blocked: the secret was never persisted anyway.
+    }
+    setFeed(emptyFeed);
+    setSecret(null);
+  }
+
   if (!secret) {
     return (
       <Setup
@@ -61,6 +71,9 @@ export function App() {
       <header>
         <h1>Hopnote</h1>
         <span class={`status ${status}`}>{STATUS_LABEL[status]}</span>
+        <button type="button" class="link" onClick={changeRoom}>
+          更換房間
+        </button>
       </header>
       {feed.items.length === 0 && <p class="empty">還沒有內容。在電腦上選取文字後按 Alt+Q。</p>}
       <ul>

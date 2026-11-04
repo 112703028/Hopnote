@@ -16,6 +16,10 @@ export function loadSecret(storage: Pick<Storage, "getItem">): string | null {
   return stored === null ? null : normalizeSecretInput(stored);
 }
 
+export function clearSecret(storage: Pick<Storage, "removeItem">): void {
+  storage.removeItem(STORAGE_KEY);
+}
+
 export function saveSecret(storage: Pick<Storage, "setItem">, secret: string): void {
   storage.setItem(STORAGE_KEY, secret);
 }

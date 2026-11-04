@@ -75,24 +75,24 @@ describe("sendItem", () => {
     expect(JSON.parse(String(calls[1].body)).id).toBe(JSON.parse(String(calls[0].body)).id);
   });
 
-  it("maps 413 to an error containing 'too large'", async () => {
+  it("maps 413 to an error containing '太大'", async () => {
     const { impl } = fakeFetch([new Response("{}", { status: 413 })]);
     const result = await sendItem(SETTINGS, "image", "x", impl);
     expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.error).toContain("too large");
+    if (!result.ok) expect(result.error).toContain("太大");
   });
 
-  it("maps 429 to an error containing 'rate limited'", async () => {
+  it("maps 429 to an error containing '太頻繁'", async () => {
     const { impl } = fakeFetch([new Response("{}", { status: 429 })]);
     const result = await sendItem(SETTINGS, "text", "x", impl);
     expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.error).toContain("rate limited");
+    if (!result.ok) expect(result.error).toContain("太頻繁");
   });
 
-  it("maps any other failure to 'relay error <status>'", async () => {
+  it("maps any other failure to '中繼伺服器錯誤 <status>'", async () => {
     const { impl, calls } = fakeFetch([new Response("{}", { status: 500 })]);
     const result = await sendItem(SETTINGS, "text", "x", impl);
-    expect(result).toEqual({ ok: false, error: "relay error 500" });
+    expect(result).toEqual({ ok: false, error: "中繼伺服器錯誤 500" });
     expect(calls).toHaveLength(1);
   });
 });

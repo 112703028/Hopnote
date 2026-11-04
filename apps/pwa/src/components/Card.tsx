@@ -1,12 +1,13 @@
 import { useState } from "preact/hooks";
-import { decodePayload, type StoredItem } from "@hopnote/protocol";
+import type { StoredItem } from "@hopnote/protocol";
 import { copyPng, copyText } from "../clipboard";
+import { decodeCached } from "../decode-cache";
 
 // No touch or contextmenu handlers and no custom long-press: iOS must be free to
 // start its own text selection and image drag.
 export function Card({ item }: { item: StoredItem }) {
   const [copied, setCopied] = useState(false);
-  const payload = decodePayload(item.kind, item.payload);
+  const payload = decodeCached(item);
   if (!payload) return null;
 
   async function copy(): Promise<void> {

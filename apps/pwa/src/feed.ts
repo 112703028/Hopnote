@@ -1,4 +1,4 @@
-import type { StoredItem } from "@hopnote/protocol";
+import { MAX_IMAGE_ITEMS, MAX_TEXT_ITEMS, type StoredItem } from "@hopnote/protocol";
 
 export interface FeedState {
   /** Newest first. */
@@ -12,6 +12,10 @@ export function mergeItems(state: FeedState, incoming: StoredItem[]): FeedState 
   const bySeq = new Map<number, StoredItem>();
   for (const item of state.items) bySeq.set(item.seq, item);
   for (const item of incoming) bySeq.set(item.seq, item);
-  const items = [...bySeq.values()].sort((a, b) => b.seq - a.seq);
-  return { items, latestSeq: Math.max(state.latestSeq, items[0]?.seq ?? 0) };
+  const sorted = [...bySeq.values()].sort((a, b) => b.seq - a.seq);
+  // The same per-kind caps as the relay, so a long session cannot grow the page without bound.
+  const caps = { text: MAX_TEXT_ITEMS, image: MAX_IMAGE_ITEMS };
+  const seen = { text: 0, image: 0 };
+  const items = sorted.filter((item) => ++seen[item.kind] <= caps[item.kind]);
+  return { items, latestSeq: Math.max(state.latestSeq, sorted[0]?.seq ?? 0) };
 }

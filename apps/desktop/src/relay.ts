@@ -11,9 +11,9 @@ async function interpret(res: Response): Promise<SendResult> {
     const body = (await res.json()) as { seq: number };
     return { ok: true, seq: body.seq };
   }
-  if (res.status === 413) return { ok: false, error: "item too large for the relay" };
-  if (res.status === 429) return { ok: false, error: "rate limited, try again in a few seconds" };
-  return { ok: false, error: `relay error ${res.status}` };
+  if (res.status === 413) return { ok: false, error: "內容太大，中繼伺服器拒絕接收" };
+  if (res.status === 429) return { ok: false, error: "傳送太頻繁，請稍後再試" };
+  return { ok: false, error: `中繼伺服器錯誤 ${res.status}` };
 }
 
 // A network error is retried once with the SAME id, so a request that did reach
@@ -41,5 +41,5 @@ export async function sendItem(
     }
     return interpret(res);
   }
-  return { ok: false, error: "network error: could not reach the relay" };
+  return { ok: false, error: "無法連線到中繼伺服器" };
 }

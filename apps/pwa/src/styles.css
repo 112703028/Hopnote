@@ -120,3 +120,11 @@ li + li {
 .error {
   color: var(--warn);
 }
+
+.link {
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-size: 0.8rem;
+  padding: 4px;
+}
