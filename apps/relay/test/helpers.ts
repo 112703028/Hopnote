@@ -1,5 +1,5 @@
 import { exports } from "cloudflare:workers";
-import { encodeTextPayload, newItemId, type Envelope } from "@hopnote/protocol";
+import { MIN_PAYLOAD_CHARS, newItemId, type Envelope } from "@hopnote/protocol";
 
 const BASE = "https://relay.test";
 
@@ -7,8 +7,18 @@ export function newRoom(): string {
   return newItemId();
 }
 
+// A valid-looking payload: base64url of the text, padded with "A" to the minimum length.
+export function payloadFor(text: string): string {
+  const bytes = new TextEncoder().encode(text);
+  const encoded = btoa(String.fromCharCode(...bytes))
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
+  return encoded.padEnd(MIN_PAYLOAD_CHARS, "A");
+}
+
 export function textEnvelope(text = "hi", id = newItemId()): Envelope {
-  return { id, kind: "text", payload: encodeTextPayload(text, 1) };
+  return { id, kind: "text", payload: payloadFor(text) };
 }
 
 export function post(room: string, body: unknown): Promise<Response> {

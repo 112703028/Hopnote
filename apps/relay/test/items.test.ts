@@ -37,9 +37,9 @@ describe("POST /room/:id/items", () => {
     expect((await post("not-a-room", textEnvelope())).status).toBe(404);
   });
 
-  it("returns 413 for a text payload of 65537 chars and stores nothing", async () => {
+  it("returns 413 for a text payload of 262145 chars and stores nothing", async () => {
     const room = newRoom();
-    const res = await post(room, { id: newItemId(), kind: "text", payload: "x".repeat(65537) });
+    const res = await post(room, { id: newItemId(), kind: "text", payload: "A".repeat(262145) });
     expect(res.status).toBe(413);
     expect(await historySeqs(room)).toEqual([]);
   });
@@ -49,10 +49,15 @@ describe("POST /room/:id/items", () => {
     const res = await post(room, {
       id: newItemId(),
       kind: "image",
-      payload: "x".repeat(1_500_001),
+      payload: "A".repeat(1_500_001),
     });
     expect(res.status).toBe(413);
     expect(await historySeqs(room)).toEqual([]);
+  });
+
+  it("returns 400 for a payload with a character outside base64url", async () => {
+    const res = await post(newRoom(), { id: newItemId(), kind: "text", payload: "{".repeat(60) });
+    expect(res.status).toBe(400);
   });
 
   it("returns 405 for GET /items", async () => {

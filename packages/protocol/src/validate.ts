@@ -1,4 +1,4 @@
-import { MAX_IMAGE_PAYLOAD_CHARS, MAX_TEXT_PAYLOAD_CHARS } from "./limits";
+import { MAX_IMAGE_PAYLOAD_CHARS, MAX_TEXT_PAYLOAD_CHARS, MIN_PAYLOAD_CHARS } from "./limits";
 
 export type ItemKind = "text" | "image";
 
@@ -20,6 +20,7 @@ export type EnvelopeResult =
   | { ok: false; error: string; code: "invalid" | "too_large" };
 
 const HEX128 = /^[0-9a-f]{32}$/;
+const BASE64URL = /^[A-Za-z0-9_-]+$/;
 
 export function isHex128(value: unknown): value is string {
   return typeof value === "string" && HEX128.test(value);
@@ -47,6 +48,9 @@ export function validateEnvelope(raw: unknown): EnvelopeResult {
   const max = kind === "text" ? MAX_TEXT_PAYLOAD_CHARS : MAX_IMAGE_PAYLOAD_CHARS;
   if (payload.length > max) {
     return { ok: false, error: `payload exceeds ${max} chars`, code: "too_large" };
+  }
+  if (payload.length < MIN_PAYLOAD_CHARS || !BASE64URL.test(payload)) {
+    return { ok: false, error: "payload must be base64url ciphertext", code: "invalid" };
   }
   return { ok: true, envelope: { id, kind, payload } };
 }
