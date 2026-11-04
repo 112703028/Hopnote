@@ -72,6 +72,9 @@ importers:
 
   apps/relay:
     dependencies:
+      '@hopnote/crypto':
+        specifier: workspace:*
+        version: link:../../packages/crypto
       '@hopnote/protocol':
         specifier: workspace:*
         version: link:../../packages/protocol

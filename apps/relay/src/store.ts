@@ -29,6 +29,18 @@ export function initSchema(sql: SqlStorage): void {
     payload TEXT NOT NULL,
     received_at INTEGER NOT NULL
   )`);
+  sql.exec("CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)");
+}
+
+const AUTH_HASH_KEY = "auth_hash";
+
+export function getAuthHash(sql: SqlStorage): string | null {
+  const rows = sql.exec<{ value: string }>("SELECT value FROM meta WHERE key = ?", AUTH_HASH_KEY).toArray();
+  return rows.length > 0 ? rows[0].value : null;
+}
+
+export function setAuthHash(sql: SqlStorage, hash: string): void {
+  sql.exec("INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)", AUTH_HASH_KEY, hash);
 }
 
 export function findItemById(sql: SqlStorage, id: string): StoredItem | null {

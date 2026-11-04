@@ -10,7 +10,7 @@ describe("CORS", () => {
     expect(res.status).toBe(204);
     expect(res.headers.get("access-control-allow-origin")).toBe("*");
     expect(res.headers.get("access-control-allow-methods")).toBe("GET, POST, OPTIONS");
-    expect(res.headers.get("access-control-allow-headers")).toBe("Content-Type");
+    expect(res.headers.get("access-control-allow-headers")).toBe("Content-Type, Authorization");
   });
 
   it("lets the browser cache the preflight for two hours", async () => {

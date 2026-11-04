@@ -9,6 +9,7 @@
     "deploy": "wrangler deploy"
   },
   "dependencies": {
+    "@hopnote/crypto": "workspace:*",
     "@hopnote/protocol": "workspace:*"
   },
   "devDependencies": {

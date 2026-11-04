@@ -1,4 +1,5 @@
 import { DurableObject } from "cloudflare:workers";
+import { AUTH_TOKEN_PATTERN, hashToken, tokensMatch } from "@hopnote/crypto/token";
 import {
   HISTORY_DEFAULT_LIMIT,
   HISTORY_MAX_LIMIT,
@@ -12,12 +13,14 @@ import {
 } from "@hopnote/protocol";
 import {
   findItemById,
+  getAuthHash,
   initSchema,
   insertItem,
   latestSeq,
   listItems,
   oldestReceivedAt,
   pruneItems,
+  setAuthHash,
 } from "./store";
 
 function json(body: unknown, status = 200): Response {
@@ -25,6 +28,27 @@ function json(body: unknown, status = 200): Response {
     status,
     headers: { "Content-Type": "application/json" },
   });
+}
+
+const WS_PROTOCOL = "hopnote.v1";
+const WS_AUTH_PREFIX = "hopnote.auth.";
+
+function offeredProtocols(request: Request): string[] {
+  return (request.headers.get("Sec-WebSocket-Protocol") ?? "")
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+}
+
+// HTTP routes use a Bearer header; a browser WebSocket cannot set headers, so it offers the
+// token as a subprotocol instead.
+function extractToken(request: Request, route: string): string | null {
+  const header = request.headers.get("Authorization");
+  const bearer = header?.match(/^Bearer (\S+)$/);
+  if (bearer) return bearer[1];
+  if (route !== "ws") return null;
+  const entry = offeredProtocols(request).find((p) => p.startsWith(WS_AUTH_PREFIX));
+  return entry ? entry.slice(WS_AUTH_PREFIX.length) : null;
 }
 
 // Anything that is not plain digits (negative, "abc", empty) falls back.
@@ -47,10 +71,31 @@ export class Room extends DurableObject<Env> {
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url);
     const route = url.pathname.split("/")[3];
+    if (route !== "items" && route !== "history" && route !== "ws") {
+      return json({ error: "not found" }, 404);
+    }
+    const denied = await this.authenticate(request, route);
+    if (denied) return denied;
     if (route === "items") return this.handleItems(request);
     if (route === "history") return this.handleHistory(request, url);
-    if (route === "ws") return this.handleWebSocket(request);
-    return json({ error: "not found" }, 404);
+    return this.handleWebSocket(request);
+  }
+
+  // The first valid token for a room binds it (stored as a hash); every later request must match.
+  private async authenticate(request: Request, route: string): Promise<Response | null> {
+    const token = extractToken(request, route);
+    if (token === null || !AUTH_TOKEN_PATTERN.test(token)) {
+      return json({ error: "unauthorized" }, 401);
+    }
+    const hash = await hashToken(token);
+    // No await between reading and writing the binding, so two first requests cannot both bind.
+    const sql = this.ctx.storage.sql;
+    const bound = getAuthHash(sql);
+    if (bound === null) {
+      setAuthHash(sql, hash);
+      return null;
+    }
+    return tokensMatch(bound, hash) ? null : json({ error: "wrong_key" }, 403);
   }
 
   webSocketMessage(): void {
@@ -126,7 +171,10 @@ export class Room extends DurableObject<Env> {
     }
     const [client, server] = Object.values(new WebSocketPair());
     this.ctx.acceptWebSocket(server);
-    return new Response(null, { status: 101, webSocket: client });
+    const headers = new Headers();
+    // Only echo what the client offered; it never includes the token.
+    if (offeredProtocols(request).includes(WS_PROTOCOL)) headers.set("Sec-WebSocket-Protocol", WS_PROTOCOL);
+    return new Response(null, { status: 101, webSocket: client, headers });
   }
 
   private broadcast(item: StoredItem): void {

@@ -1,6 +1,6 @@
 import { exports } from "cloudflare:workers";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { newRoom, post, textEnvelope } from "./helpers";
+import { newRoom, post, textEnvelope, tokenFor } from "./helpers";
 
 const opened: WebSocket[] = [];
 
@@ -10,7 +10,12 @@ afterEach(() => {
 
 async function openSocket(room: string): Promise<{ ws: WebSocket; messages: string[] }> {
   const res = await exports.default.fetch(
-    new Request(`https://relay.test/room/${room}/ws`, { headers: { Upgrade: "websocket" } }),
+    new Request(`https://relay.test/room/${room}/ws`, {
+      headers: {
+        Upgrade: "websocket",
+        "Sec-WebSocket-Protocol": `hopnote.v1, hopnote.auth.${tokenFor(room)}`,
+      },
+    }),
   );
   expect(res.status).toBe(101);
   const ws = res.webSocket as WebSocket;
@@ -66,7 +71,12 @@ describe("GET /room/:id/ws", () => {
   });
 
   it("returns 426 without an Upgrade header", async () => {
-    const res = await exports.default.fetch(new Request(`https://relay.test/room/${newRoom()}/ws`));
+    const room = newRoom();
+    const res = await exports.default.fetch(
+      new Request(`https://relay.test/room/${room}/ws`, {
+        headers: { Authorization: `Bearer ${tokenFor(room)}` },
+      }),
+    );
     expect(res.status).toBe(426);
   });
 });
