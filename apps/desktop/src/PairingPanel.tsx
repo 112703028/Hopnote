@@ -125,10 +125,10 @@ export function PairingPanel({
         <button type="button" onClick={() => setRevealed(!revealed)}>
           {revealed ? "隱藏 QR code" : "顯示 QR code"}
         </button>
-        <button type="button" onClick={copyCode}>
+        <button type="button" class="secondary" onClick={copyCode}>
           {copied ? "已複製" : "複製配對碼"}
         </button>
-        <button type="button" onClick={generateNew}>
+        <button type="button" class="danger" onClick={generateNew}>
           產生新金鑰
         </button>
       </div>

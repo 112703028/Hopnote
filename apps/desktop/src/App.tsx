@@ -131,10 +131,9 @@ function App() {
         <ul>
           {log.map((entry) => (
             <li key={entry.at}>
-              <small>
-                {new Date(entry.at).toLocaleTimeString()} · {entry.hotkey}
-              </small>{" "}
-              {entry.text}
+              <time>{new Date(entry.at).toLocaleTimeString()}</time>
+              <kbd>{entry.hotkey}</kbd>
+              <span>{entry.text}</span>
             </li>
           ))}
         </ul>

@@ -41,7 +41,7 @@ export function Setup({
       <h1>Hopnote</h1>
       {notice && <p class="notice">{notice}</p>}
       <p>在電腦的 Hopnote 視窗按「顯示 QR code」，再用下面的按鈕掃描。</p>
-      <button type="button" onClick={() => setScanning(true)}>
+      <button type="button" class="primary" onClick={() => setScanning(true)}>
         掃描 QR code
       </button>
       <p class="hint">

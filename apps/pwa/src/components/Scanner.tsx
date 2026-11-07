@@ -87,7 +87,9 @@ export function Scanner({
         <p class="error">{error}</p>
       ) : (
         <>
-          <video ref={video} playsInline muted />
+          <div class="viewfinder">
+            <video ref={video} playsInline muted />
+          </div>
           <p>把相機對準電腦畫面上的 QR code。</p>
         </>
       )}

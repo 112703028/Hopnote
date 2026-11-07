@@ -1,30 +1,73 @@
 :root {
-  font-family: system-ui, sans-serif;
-  color: #1f2328;
-  background: #ffffff;
+  --paper: #f1f4f1;
+  --paper-2: #e6ebe6;
+  --ink: #1d2a24;
+  --muted: #66736c;
+  --line: #c9d3cc;
+  --mark-wash: #ffe45c;
+  --ok: #2e7d4f;
+  --warn: #9a5b00;
+  --error: #b3382c;
+  color-scheme: light dark;
+  font-family: system-ui, "Microsoft JhengHei UI", "PingFang TC", sans-serif;
+  color: var(--ink);
+  background: var(--paper);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    color: #e6edf3;
-    background: #0d1117;
+    --paper: #141816;
+    --paper-2: #1c221f;
+    --ink: #e4eae5;
+    --muted: #8e9b94;
+    --line: #2e3833;
+    --mark-wash: rgba(255, 228, 92, 0.35);
+    --ok: #4cc17a;
+    --warn: #e0a33a;
+    --error: #f07a6d;
   }
 }
 
+body {
+  margin: 0;
+  background: var(--paper);
+}
+
+:focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: 2px;
+}
+
 .container {
-  max-width: 640px;
+  max-width: 40rem;
   margin: 0 auto;
-  padding: 16px;
+  padding: 24px 28px 48px;
+}
+
+h1 {
+  margin: 0 0 28px;
+  font-family: Georgia, serif;
+  font-size: 1.75rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+h2 {
+  margin: 0 0 8px;
+  font-size: 1rem;
+  font-weight: 600;
 }
 
 section {
-  margin-bottom: 24px;
+  margin-bottom: 32px;
 }
 
-pre {
-  white-space: pre-wrap;
-  margin: 4px 0 12px;
+p {
+  margin: 0 0 8px;
+  line-height: 1.6;
 }
+
+/* Form controls */
 
 form {
   display: flex;
@@ -38,34 +81,135 @@ label {
   flex-direction: column;
   gap: 4px;
   width: 100%;
+  font-size: 0.875rem;
+  color: var(--muted);
 }
 
 input {
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper-2);
+  color: var(--ink);
+  font: inherit;
   font-size: 0.95rem;
-  padding: 6px 8px;
 }
+
+button {
+  min-height: 38px;
+  padding: 0 16px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: var(--ink);
+  color: var(--paper);
+  font: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+button:hover {
+  opacity: 0.88;
+}
+button:active {
+  opacity: 0.75;
+}
+
+.secondary {
+  border-color: var(--muted);
+  background: none;
+  color: var(--ink);
+}
+
+/* Makes every paired device stop working, so it is marked in red. */
+.danger {
+  border-color: var(--error);
+  background: none;
+  color: var(--error);
+}
+
+/* Messages */
 
 .error {
   margin: 0;
-  color: #b35c00;
+  color: var(--error);
+}
+
+.notice {
+  color: var(--warn);
 }
 
 .ok {
-  color: #1a7f37;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+.ok::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ok);
 }
 
-ul {
-  padding-left: 18px;
+/* The fingerprint is compared with the one on the iPad, which marks it the same way. */
+strong {
+  padding: 0 0.25em;
+  border-radius: 3px;
+  background: var(--mark-wash);
+  font-size: 1.2em;
+  letter-spacing: 0.06em;
+  font-variant-numeric: tabular-nums;
 }
+
+/* Pairing */
 
 .qr {
   display: block;
-  background: #ffffff;
-  padding: 8px;
+  margin: 12px 0;
+  padding: 12px;
   border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 0 0 1px var(--line);
 }
 
 .row {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
+  margin-top: 16px;
+}
+
+/* Recent sends */
+
+ul {
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+li {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-top: 6px;
+  line-height: 1.5;
+}
+
+time {
+  flex: none;
+  font-size: 0.8125rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+kbd {
+  flex: none;
+  padding: 1px 6px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--paper-2);
+  font: inherit;
+  font-size: 0.75rem;
 }

@@ -174,12 +174,17 @@ export function App() {
         <h1>Hopnote</h1>
         <span class={`status ${status}`}>{STATUS_LABEL[status]}</span>
         {/* Always reachable: a home-screen app has no camera flow, so the code is moved by paste. */}
-        <button type="button" class="link" onClick={copyCode}>
-          {copiedCode ? "已複製" : "複製配對碼"}
-        </button>
-        <button type="button" class="link" onClick={repair}>
-          重新配對
-        </button>
+        <details class="menu">
+          <summary aria-label="更多選項">⋯</summary>
+          <div class="menu-items">
+            <button type="button" class="menu-item" onClick={copyCode}>
+              {copiedCode ? "已複製" : "複製配對碼"}
+            </button>
+            <button type="button" class="menu-item danger" onClick={repair}>
+              重新配對
+            </button>
+          </div>
+        </details>
       </header>
 
       {keys && !confirmed && (
