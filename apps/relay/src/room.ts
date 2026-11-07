@@ -7,7 +7,7 @@ import {
   RATE_LIMIT_MAX_ITEMS,
   RATE_LIMIT_WINDOW_MS,
   RETENTION_MS,
-  validateEnvelope,
+  validateEnvelope,   // 規則書：大小上限、信的格式檢查
   type ServerMessage,
   type StoredItem,
 } from "@hopnote/protocol";
@@ -68,7 +68,7 @@ export class Room extends DurableObject<Env> {
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
     ctx.blockConcurrencyWhile(async () => initSchema(ctx.storage.sql));
-    ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair("ping", "pong"));
+    ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair("ping", "pong")); //iPad 會定期送 ping 確認連線還在。這裡設定「收到 ping 自動回 pong」，而且不用叫醒管理員。管理員沒事時會「睡覺」省資源，這個小設定讓心跳不會吵醒他。
   }
 
   async fetch(request: Request): Promise<Response> {
@@ -77,7 +77,7 @@ export class Room extends DurableObject<Env> {
     if (route !== "items" && route !== "history" && route !== "ws" && route !== "retire") {
       return json({ error: "not found" }, 404);
     }
-    const denied = await this.authenticate(request, route);
+    const denied = await this.authenticate(request, route);  // 先檢查鑰匙
     if (denied) return denied;
     if (route === "retire") return this.handleRetire(request);
     // The owner moved to a new key: this room is closed for good.

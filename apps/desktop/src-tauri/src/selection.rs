@@ -11,17 +11,17 @@ use windows::Win32::UI::Input::KeyboardAndMouse::{
 
 // Keys of the global hotkey. They must be physically up before we send Ctrl+C,
 // otherwise the target app sees e.g. Alt+Ctrl+C.
-const HOTKEY_KEYS: [VIRTUAL_KEY; 6] = [VK_MENU, VK_SHIFT, VK_CONTROL, VK_LWIN, VK_RWIN, VK_Q];
+const HOTKEY_KEYS: [VIRTUAL_KEY; 6] = [VK_MENU, VK_SHIFT, VK_CONTROL, VK_LWIN, VK_RWIN, VK_Q];  //這是「必須全部放開才能送 Ctrl+C」的清單。
 
 // Alt pressed and released with no other key in between is taken as a lone Alt
 // tap: Chrome moves focus to its toolbar. The hotkey swallows the Q, so we
 // inject an unassigned key while Alt is still held.
 const MASK_KEY: VIRTUAL_KEY = VIRTUAL_KEY(0xE8);
 
-const KEY_RELEASE_TIMEOUT: Duration = Duration::from_millis(1000);
-const CLIPBOARD_TIMEOUT: Duration = Duration::from_millis(500);
-const POLL_INTERVAL: Duration = Duration::from_millis(10);
-const SETTLE_INTERVAL: Duration = Duration::from_millis(30);
+const KEY_RELEASE_TIMEOUT: Duration = Duration::from_millis(1000); //等放開鍵最多 1 秒
+const CLIPBOARD_TIMEOUT: Duration = Duration::from_millis(500);    //等剪貼簿變化最多 0.5 秒
+const POLL_INTERVAL: Duration = Duration::from_millis(10);         //每 10 毫秒檢查一次
+const SETTLE_INTERVAL: Duration = Duration::from_millis(30);       //剪貼簿穩定檢查：每 30 毫秒一次，最多 10 次
 const SETTLE_MAX_ROUNDS: u32 = 10;
 
 // Holding the hotkey makes it fire repeatedly; only one copy may run at a time.
@@ -32,7 +32,7 @@ static BUSY: AtomicBool = AtomicBool::new(false);
 /// (no selection, or another copy was already running).
 #[tauri::command]
 pub async fn copy_selection() -> Result<bool, String> {
-    tauri::async_runtime::spawn_blocking(copy_selection_blocking)
+    tauri::async_runtime::spawn_blocking(copy_selection_blocking) //spawn_blocking(...)：把會「等待」的工作丟到另一條執行緒。不然這段會卡住整個視窗和系統匣
         .await
         .map_err(|e| e.to_string())?
 }
@@ -53,6 +53,8 @@ pub fn mask_alt_tap() -> Result<(), String> {
     mask_alt_if_down()
 }
 
+
+//如果 Alt 還按著，就送出那個無意義的鍵
 fn mask_alt_if_down() -> Result<(), String> {
     if is_down(VK_MENU) {
         send_mask_key()
@@ -63,7 +65,7 @@ fn mask_alt_if_down() -> Result<(), String> {
 
 fn send_copy_and_wait() -> Result<bool, String> {
     mask_alt_if_down()?;
-    if !wait_until(|| HOTKEY_KEYS.iter().all(|k| !is_down(*k)), KEY_RELEASE_TIMEOUT) {
+    if !wait_until(|| HOTKEY_KEYS.iter().all(|k| !is_down(*k)), KEY_RELEASE_TIMEOUT) {  //檢查六個鍵是不是都已經放開
         return Err("快捷鍵放開逾時".to_string());
     }
 
@@ -71,7 +73,7 @@ fn send_copy_and_wait() -> Result<bool, String> {
     send_ctrl_c()?;
 
     if !wait_until(|| clipboard_sequence() != before, CLIPBOARD_TIMEOUT) {
-        return Ok(false);
+        return Ok(false);    // 沒變 = 沒複製到
     }
     wait_for_clipboard_to_settle();
     Ok(true)
