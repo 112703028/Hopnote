@@ -59,11 +59,14 @@ cd apps/relay && pnpm exec wrangler dev     # http://localhost:8787
 1. Desktop app: paste your Worker URL (only the address, no path and no `#`), Save.
 2. Click **產生金鑰並配對**. A short fingerprint and a QR code appear. The QR code contains the key, so it hides itself
    after a minute; **顯示 QR code** brings it back.
-3. iPad: scan the QR code with the **Camera app** and open the link in Safari. The page stores the key and shows its fingerprint.
+3. iPad: open Hopnote (in Safari or from the Home Screen) and tap **掃描 QR code**, then point the camera at the desktop
+   screen. The page stores the key and shows its fingerprint. You can also scan with the **Camera app** and open the link in
+   Safari.
 4. Compare the two fingerprints, tap **與電腦端一致**.
-5. Add the page to the Home Screen if you like. A home-screen app may not share Safari's storage and cannot use the camera
-   flow: if it asks for a code, open Hopnote in Safari, tap **複製配對碼** (always in the header) and paste it into the
-   home-screen app. The code is the key: move it only through your own devices, not through a chat app.
+5. Add the page to the Home Screen if you like. A home-screen app may not share Safari's storage, so pair it on its own:
+   open it and tap **掃描 QR code** again. If the camera is not allowed or not available, open Hopnote in Safari, tap
+   **複製配對碼** (always in the header) and paste it into the home-screen app. The code is the key: move it only through your
+   own devices, not through a chat app.
 6. The pairing link contains the key and may stay in Safari's History. Clear that entry after pairing (Settings > Safari >
    Clear History, or delete the single entry).
 

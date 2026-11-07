@@ -1,5 +1,6 @@
 import { useState } from "preact/hooks";
 import { parsePairingCode } from "@hopnote/crypto";
+import { Scanner } from "./Scanner";
 
 export function Setup({
   onKey,
@@ -14,6 +15,7 @@ export function Setup({
 }) {
   const [value, setValue] = useState("");
   const [error, setError] = useState("");
+  const [scanning, setScanning] = useState(false);
 
   function submit(event: Event): void {
     event.preventDefault();
@@ -25,17 +27,28 @@ export function Setup({
     }
   }
 
+  if (scanning) {
+    return (
+      <main class="setup">
+        <h1>Hopnote</h1>
+        <Scanner onKey={onKey} onCancel={() => setScanning(false)} />
+      </main>
+    );
+  }
+
   return (
     <main class="setup">
       <h1>Hopnote</h1>
       {notice && <p class="notice">{notice}</p>}
-      {standalone ? (
-        <p>
-          這是主畫面 app，沒辦法直接掃描。請先在 Safari 打開電腦端 QR code 的連結完成配對，在那裡按「複製配對碼」，再回到這裡貼上。
-        </p>
-      ) : (
-        <p>用電腦端畫面上的 QR code 配對：用 iPad 的相機掃描並在 Safari 打開，或貼上配對碼。</p>
-      )}
+      <p>在電腦的 Hopnote 視窗按「顯示 QR code」，再用下面的按鈕掃描。</p>
+      <button type="button" onClick={() => setScanning(true)}>
+        掃描 QR code
+      </button>
+      <p class="hint">
+        {standalone
+          ? "或是先用 Safari 打開 QR code 的連結完成配對，按「複製配對碼」，再貼到這裡。"
+          : "也可以用 iPad 的相機 app 掃描並在 Safari 打開，或貼上配對碼。"}
+      </p>
       <form onSubmit={submit}>
         <input
           value={value}
