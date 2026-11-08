@@ -33,6 +33,7 @@ async function readClipboardImage(): Promise<{ rgba: Uint8Array; width: number; 
 
 const deps: CaptureDeps = {
   copySelection: () => invoke<boolean>("copy_selection"),
+  captureScreenshot: () => invoke<boolean>("capture_screenshot"),
   readText: readClipboardText,
   readImage: readClipboardImage,
   encodeScreenshot,

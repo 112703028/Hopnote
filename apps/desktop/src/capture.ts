@@ -5,6 +5,9 @@ import type { SendResult } from "./relay";
 
 export interface CaptureDeps {
   copySelection(): Promise<boolean>;
+  /** Opens the Windows snipping overlay. Resolves true once a snip reached the clipboard,
+   *  false when it was cancelled (Esc) or timed out. */
+  captureScreenshot(): Promise<boolean>;
   /** null when the clipboard holds no text. */
   readText(): Promise<string | null>;
   readImage(): Promise<{ rgba: Uint8Array; width: number; height: number } | null>;
@@ -16,7 +19,7 @@ export interface CaptureDeps {
 
 export type CaptureOutcome =
   | { status: "sent"; kind: ItemKind; seq: number }
-  | { status: "nothing-copied" }
+  | { status: "cancelled" }
   | { status: "empty" }
   | { status: "too-large" }
   | { status: "error"; message: string };
@@ -40,13 +43,24 @@ function failure(error: unknown): CaptureOutcome {
   return { status: "error", message: error instanceof Error ? error.message : String(error) };
 }
 
-/** Alt+Q: copy the current selection, then send it as text. */
+async function deliverClipboardImage(deps: CaptureDeps): Promise<CaptureOutcome> {
+  const image = await deps.readImage();
+  if (!image) return { status: "empty" };
+  const encoded = await deps.encodeScreenshot(image.rgba, image.width, image.height);
+  if (!encoded) return { status: "too-large" };
+  return await deliver(deps, "image", encodeImageFrame(encoded, deps.now()));
+}
+
+/** Alt+Q: send the current selection as text; with no selection, start a screenshot and send that. */
 export async function sendSelection(deps: CaptureDeps): Promise<CaptureOutcome> {
   try {
-    if (!(await deps.copySelection())) return { status: "nothing-copied" };
-    const text = await deps.readText();
-    if (!hasText(text)) return { status: "empty" };
-    return await deliver(deps, "text", encodeTextFrame(text, deps.now()));
+    if (await deps.copySelection()) {
+      const text = await deps.readText();
+      if (!hasText(text)) return { status: "empty" };
+      return await deliver(deps, "text", encodeTextFrame(text, deps.now()));
+    }
+    if (!(await deps.captureScreenshot())) return { status: "cancelled" };
+    return await deliverClipboardImage(deps);
   } catch (error) {
     return failure(error);
   }
@@ -57,12 +71,7 @@ export async function sendClipboard(deps: CaptureDeps): Promise<CaptureOutcome> 
   try {
     const text = await deps.readText();
     if (hasText(text)) return await deliver(deps, "text", encodeTextFrame(text, deps.now()));
-
-    const image = await deps.readImage();
-    if (!image) return { status: "empty" };
-    const encoded = await deps.encodeScreenshot(image.rgba, image.width, image.height);
-    if (!encoded) return { status: "too-large" };
-    return await deliver(deps, "image", encodeImageFrame(encoded, deps.now()));
+    return await deliverClipboardImage(deps);
   } catch (error) {
     return failure(error);
   }

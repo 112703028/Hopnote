@@ -14,7 +14,7 @@ Stages 1 and 2 of the plan are built and deployed. Stages 3 and 4 have not been 
 
 | Area | State |
 |---|---|
-| Send selected text (`Alt+Q`) and clipboard text or a screenshot (`Alt+W`) | Works |
+| Send selected text, or a screenshot when nothing is selected (`Alt+Q`); send the clipboard as it is (`Alt+W`) | Works |
 | End-to-end encryption (XChaCha20-Poly1305), key derivation, tamper and replay checks | Works, covered by tests |
 | Pairing by QR code: in-app scanner, Camera app, or pasting the code; fingerprint check | Works |
 | New key retires the old room and tells paired devices to pair again | Works |
@@ -29,13 +29,14 @@ Stages 1 and 2 of the plan are built and deployed. Stages 3 and 4 have not been 
 | Cleaning PDF text (line breaks, hyphens, two columns) and measuring it | Not yet (stage 3) |
 | CI, latency numbers, screenshots and a demo GIF | Not yet (stage 4) |
 
-Automated checks: 239 tests (protocol 25, crypto 56, desktop 53, pwa 55, relay 50) and the type check pass.
+Automated checks: 245 tests (protocol 25, crypto 56, desktop 59, pwa 55, relay 50) and the type check pass.
 The parts that need real hardware (hotkeys in other apps, the QR scanner, installing to the Home Screen) are checked by hand.
 
 ## How it works
 
-- `Alt+Q`: copies the current selection and sends it as text.
-- `Win+Shift+S` (Windows snipping), then `Alt+W`: sends what is on the clipboard (text or image).
+- `Alt+Q`: copies the current selection and sends it as text. With nothing selected it opens the Windows snipping overlay
+  instead: drag a region and the screenshot is sent. `Esc` cancels and sends nothing.
+- `Alt+W`: sends what is on the clipboard (text or image), for example a screenshot you took earlier with `Win+Shift+S`.
 - The iPad web app shows cards, newest first. Tap a card to copy it, then paste it into GoodNotes (dragging into GoodNotes
   does not work).
 - Everything is encrypted on the PC and decrypted on the iPad. The relay (a Cloudflare Worker) only stores ciphertext and
@@ -133,7 +134,7 @@ The unencrypted version is gone: after the upgrade every device pairs once. Old 
 
 - Text up to about 65,000 Chinese characters; screenshots are shrunk until the PNG is at most about 1.1 MB.
 - Tables copied from a PDF arrive as plain lines: a PDF has no real table structure, so the columns are lost. For tables,
-  take a screenshot (`Win+Shift+S`, then `Alt+W`).
+  take a screenshot (`Alt+Q` with nothing selected).
 - The relay keeps the latest 100 text items and 20 images for 7 days, and accepts 20 items per 10 seconds per room.
 - No forward secrecy: if the key leaks, items still stored can be read. Keys sit unencrypted in browser storage.
 - The relay sees metadata: when you send, how large it is, text or image, and how often.

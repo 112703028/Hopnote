@@ -1,4 +1,6 @@
 use std::mem::size_of;
+use std::os::windows::process::CommandExt;
+use std::process::Command;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread::sleep;
 use std::time::{Duration, Instant};
@@ -24,8 +26,13 @@ const POLL_INTERVAL: Duration = Duration::from_millis(10);         //每 10 毫�
 const SETTLE_INTERVAL: Duration = Duration::from_millis(30);       //剪貼簿穩定檢查：每 30 毫秒一次，最多 10 次
 const SETTLE_MAX_ROUNDS: u32 = 10;
 
+const SCREENSHOT_TIMEOUT: Duration = Duration::from_secs(60);     // 等你框選截圖最多 60 秒
+const CREATE_NO_WINDOW: u32 = 0x0800_0000;                         // 啟動 cmd 時不要閃出黑色視窗
+
 // Holding the hotkey makes it fire repeatedly; only one copy may run at a time.
 static BUSY: AtomicBool = AtomicBool::new(false);
+// Likewise only one snipping overlay may be waiting at a time.
+static SNIPPING: AtomicBool = AtomicBool::new(false);
 
 /// Copies the current selection of the foreground app by sending Ctrl+C.
 /// Returns `true` if the clipboard changed, `false` if nothing was copied
@@ -44,6 +51,51 @@ fn copy_selection_blocking() -> Result<bool, String> {
     let result = send_copy_and_wait();
     BUSY.store(false, Ordering::SeqCst);
     result
+}
+
+/// Opens the Windows snipping overlay (the one Win+Shift+S shows) and waits for the
+/// snip to land on the clipboard. Returns `true` once the clipboard changed, `false`
+/// if the snip was cancelled (Esc), nothing arrived within the timeout, or another
+/// snip was already waiting.
+#[tauri::command]
+pub async fn capture_screenshot() -> Result<bool, String> {
+    tauri::async_runtime::spawn_blocking(capture_screenshot_blocking)
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+fn capture_screenshot_blocking() -> Result<bool, String> {
+    if SNIPPING.swap(true, Ordering::SeqCst) {
+        return Ok(false);
+    }
+    let result = open_overlay_and_wait();
+    SNIPPING.store(false, Ordering::SeqCst);
+    result
+}
+
+fn open_overlay_and_wait() -> Result<bool, String> {
+    let before = clipboard_sequence();
+    open_snipping_overlay()?;
+    // Esc leaves the clipboard alone, so a cancelled snip simply runs into the timeout.
+    if !wait_until(|| clipboard_sequence() != before, SCREENSHOT_TIMEOUT) {
+        return Ok(false);
+    }
+    wait_for_clipboard_to_settle();
+    Ok(true)
+}
+
+// `start` hands the ms-screenclip: link to the shell, the same as clicking it.
+fn open_snipping_overlay() -> Result<(), String> {
+    let status = Command::new("cmd")
+        .args(["/C", "start", "", "ms-screenclip:"])
+        .creation_flags(CREATE_NO_WINDOW)
+        .status()
+        .map_err(|e| format!("無法開啟截圖工具：{e}"))?;
+    if status.success() {
+        Ok(())
+    } else {
+        Err("無法開啟截圖工具（這台電腦的 Windows 沒有 ms-screenclip？）".to_string())
+    }
 }
 
 /// For hotkey handlers that do not call `copy_selection`: stops the app in front

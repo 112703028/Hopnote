@@ -14,12 +14,13 @@ interface LogEntry {
   text: string;
 }
 
-function describe(outcome: CaptureOutcome): string {
+// null: nothing happened worth a log line (a screenshot that was cancelled).
+function describe(outcome: CaptureOutcome): string | null {
   switch (outcome.status) {
     case "sent":
-      return `已送出（${outcome.kind === "text" ? "文字" : "圖片"}，#${outcome.seq}）`;
-    case "nothing-copied":
-      return "沒有複製到內容（有選取文字嗎？）";
+      return `已送出（${outcome.kind === "text" ? "文字" : "截圖"}，#${outcome.seq}）`;
+    case "cancelled":
+      return null;
     case "empty":
       return "剪貼簿裡沒有文字或圖片";
     case "too-large":
@@ -49,14 +50,16 @@ function App() {
   useEffect(() => {
     let cancelled = false;
     let unregister: (() => Promise<void>) | undefined;
-    registerHotkeys((hotkey, outcome) =>
-      setLog((prev) => [{ at: Date.now(), hotkey, text: describe(outcome) }, ...prev].slice(0, MAX_LOG)),
-    )
+    registerHotkeys((hotkey, outcome) => {
+      const text = describe(outcome);
+      if (text === null) return;
+      setLog((prev) => [{ at: Date.now(), hotkey, text }, ...prev].slice(0, MAX_LOG));
+    })
       .then((cleanup) => {
         if (cancelled) void cleanup();
         else {
           unregister = cleanup;
-          setHotkeyStatus("Alt+Q 傳送選取的文字，Alt+W 傳送剪貼簿（文字或截圖）");
+          setHotkeyStatus("Alt+Q 傳送選取的文字（沒有選取就框選截圖），Alt+W 傳送剪貼簿（文字或截圖）");
         }
       })
       .catch((error) => setHotkeyStatus(`快捷鍵註冊失敗：${error}`));

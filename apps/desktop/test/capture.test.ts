@@ -13,6 +13,7 @@ function makeDeps(overrides: Partial<CaptureDeps> = {}) {
   const sent: Sent[] = [];
   const deps: CaptureDeps = {
     copySelection: async () => true,
+    captureScreenshot: async () => true,
     readText: async () => null,
     readImage: async () => null,
     encodeScreenshot: async () => ENCODED,
@@ -27,10 +28,87 @@ function makeDeps(overrides: Partial<CaptureDeps> = {}) {
 }
 
 describe("sendSelection (Alt+Q)", () => {
-  it("returns nothing-copied and never sends when copySelection is false", async () => {
-    const { deps, sent } = makeDeps({ copySelection: async () => false });
-    expect(await sendSelection(deps)).toEqual({ status: "nothing-copied" });
+  it("starts the screenshot overlay when nothing was copied, and sends nothing if it is cancelled", async () => {
+    let started = 0;
+    const { deps, sent } = makeDeps({
+      copySelection: async () => false,
+      captureScreenshot: async () => {
+        started++;
+        return false;
+      },
+    });
+    expect(await sendSelection(deps)).toEqual({ status: "cancelled" });
+    expect(started).toBe(1);
     expect(sent).toEqual([]);
+  });
+
+  it("sends the new screenshot as an image frame when nothing was selected", async () => {
+    const { deps, sent } = makeDeps({
+      copySelection: async () => false,
+      readImage: async () => IMAGE,
+    });
+    expect(await sendSelection(deps)).toEqual({ status: "sent", kind: "image", seq: 5 });
+    expect(sent.map((s) => s.kind)).toEqual(["image"]);
+    expect(decodeImageFrame(sent[0].plaintext)).toEqual({
+      png: ENCODED.png,
+      width: 7,
+      height: 5,
+      ts: 1234,
+    });
+  });
+
+  it("never starts the overlay when text was selected", async () => {
+    let started = 0;
+    const { deps } = makeDeps({
+      readText: async () => "picked",
+      captureScreenshot: async () => {
+        started++;
+        return true;
+      },
+    });
+    expect(await sendSelection(deps)).toEqual({ status: "sent", kind: "text", seq: 5 });
+    expect(started).toBe(0);
+  });
+
+  it("returns empty when the clipboard holds no image after the screenshot", async () => {
+    const { deps, sent } = makeDeps({ copySelection: async () => false });
+    expect(await sendSelection(deps)).toEqual({ status: "empty" });
+    expect(sent).toEqual([]);
+  });
+
+  it("returns too-large without sending when the screenshot cannot be shrunk enough", async () => {
+    const { deps, sent } = makeDeps({
+      copySelection: async () => false,
+      readImage: async () => IMAGE,
+      encodeScreenshot: async () => null,
+    });
+    expect(await sendSelection(deps)).toEqual({ status: "too-large" });
+    expect(sent).toEqual([]);
+  });
+
+  it("reports an error when the screenshot overlay cannot start", async () => {
+    const { deps } = makeDeps({
+      copySelection: async () => false,
+      captureScreenshot: async () => {
+        throw new Error("無法開啟截圖工具");
+      },
+    });
+    expect(await sendSelection(deps)).toEqual({ status: "error", message: "無法開啟截圖工具" });
+  });
+
+  it("does not start the overlay when copySelection rejects", async () => {
+    let started = 0;
+    const { deps } = makeDeps({
+      copySelection: async () => {
+        throw new Error("boom");
+      },
+      captureScreenshot: async () => {
+        started++;
+        return true;
+      },
+    });
+    expect(await sendSelection(deps)).toEqual({ status: "error", message: "boom" });
+    expect(started).toBe(0);
   });
 
   it("returns empty for a whitespace-only selection and sends nothing", async () => {
