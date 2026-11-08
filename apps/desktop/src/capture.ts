@@ -12,6 +12,7 @@ export interface CaptureDeps {
   readText(): Promise<string | null>;
   readImage(): Promise<{ rgba: Uint8Array; width: number; height: number } | null>;
   encodeScreenshot: typeof encodeScreenshot;
+  sleep(ms: number): Promise<void>;
   /** Receives the plaintext frame; sealing and posting happen behind it. */
   send(kind: ItemKind, plaintext: Uint8Array): Promise<SendResult>;
   now(): number;
@@ -43,8 +44,21 @@ function failure(error: unknown): CaptureOutcome {
   return { status: "error", message: error instanceof Error ? error.message : String(error) };
 }
 
-async function deliverClipboardImage(deps: CaptureDeps): Promise<CaptureOutcome> {
-  const image = await deps.readImage();
+// Right after a snip the snipping tool and Windows' clipboard history may still hold the
+// clipboard open, which makes a read fail for a moment.
+const IMAGE_READ_ATTEMPTS = 20;
+const IMAGE_READ_PAUSE_MS = 100;
+
+async function readImageWhenReady(deps: CaptureDeps, attempts: number) {
+  for (let attempt = 1; ; attempt++) {
+    const image = await deps.readImage();
+    if (image || attempt >= attempts) return image;
+    await deps.sleep(IMAGE_READ_PAUSE_MS);
+  }
+}
+
+async function deliverClipboardImage(deps: CaptureDeps, attempts: number): Promise<CaptureOutcome> {
+  const image = await readImageWhenReady(deps, attempts);
   if (!image) return { status: "empty" };
   const encoded = await deps.encodeScreenshot(image.rgba, image.width, image.height);
   if (!encoded) return { status: "too-large" };
@@ -60,7 +74,7 @@ export async function sendSelection(deps: CaptureDeps): Promise<CaptureOutcome> 
       return await deliver(deps, "text", encodeTextFrame(text, deps.now()));
     }
     if (!(await deps.captureScreenshot())) return { status: "cancelled" };
-    return await deliverClipboardImage(deps);
+    return await deliverClipboardImage(deps, IMAGE_READ_ATTEMPTS);
   } catch (error) {
     return failure(error);
   }
@@ -71,7 +85,7 @@ export async function sendClipboard(deps: CaptureDeps): Promise<CaptureOutcome> 
   try {
     const text = await deps.readText();
     if (hasText(text)) return await deliver(deps, "text", encodeTextFrame(text, deps.now()));
-    return await deliverClipboardImage(deps);
+    return await deliverClipboardImage(deps, 1);
   } catch (error) {
     return failure(error);
   }

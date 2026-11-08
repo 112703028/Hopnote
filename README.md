@@ -29,7 +29,7 @@ Stages 1 and 2 of the plan are built and deployed. Stages 3 and 4 have not been 
 | Cleaning PDF text (line breaks, hyphens, two columns) and measuring it | Not yet (stage 3) |
 | CI, latency numbers, screenshots and a demo GIF | Not yet (stage 4) |
 
-Automated checks: 245 tests (protocol 25, crypto 56, desktop 59, pwa 55, relay 50) and the type check pass.
+Automated checks: 247 tests (protocol 25, crypto 56, desktop 61, pwa 55, relay 50) and the type check pass.
 The parts that need real hardware (hotkeys in other apps, the QR scanner, installing to the Home Screen) are checked by hand.
 
 ## How it works

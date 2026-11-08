@@ -37,6 +37,7 @@ const deps: CaptureDeps = {
   readText: readClipboardText,
   readImage: readClipboardImage,
   encodeScreenshot,
+  sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
   send: makeSender({ loadSettings: () => loadSettings(localStorage) }),
   now: () => Date.now(),
 };

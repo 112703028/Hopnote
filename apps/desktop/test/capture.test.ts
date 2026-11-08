@@ -14,6 +14,7 @@ function makeDeps(overrides: Partial<CaptureDeps> = {}) {
   const deps: CaptureDeps = {
     copySelection: async () => true,
     captureScreenshot: async () => true,
+    sleep: async () => {},
     readText: async () => null,
     readImage: async () => null,
     encodeScreenshot: async () => ENCODED,
@@ -55,6 +56,36 @@ describe("sendSelection (Alt+Q)", () => {
       height: 5,
       ts: 1234,
     });
+  });
+
+  it("keeps trying to read the image while the snipping tool still holds the clipboard", async () => {
+    const pauses: number[] = [];
+    let reads = 0;
+    const { deps, sent } = makeDeps({
+      copySelection: async () => false,
+      readImage: async () => (++reads < 4 ? null : IMAGE),
+      sleep: async (ms) => {
+        pauses.push(ms);
+      },
+    });
+    expect(await sendSelection(deps)).toEqual({ status: "sent", kind: "image", seq: 5 });
+    expect(reads).toBe(4);
+    expect(pauses).toEqual([100, 100, 100]);
+    expect(sent.map((s) => s.kind)).toEqual(["image"]);
+  });
+
+  it("gives up with empty after 20 failed reads (about two seconds)", async () => {
+    let reads = 0;
+    const { deps, sent } = makeDeps({
+      copySelection: async () => false,
+      readImage: async () => {
+        reads++;
+        return null;
+      },
+    });
+    expect(await sendSelection(deps)).toEqual({ status: "empty" });
+    expect(reads).toBe(20);
+    expect(sent).toEqual([]);
   });
 
   it("never starts the overlay when text was selected", async () => {
@@ -163,9 +194,16 @@ describe("sendClipboard (Alt+W)", () => {
     expect(sent.map((s) => s.kind)).toEqual(["image"]);
   });
 
-  it("returns empty when the clipboard has neither text nor an image", async () => {
-    const { deps, sent } = makeDeps();
+  it("returns empty when the clipboard has neither text nor an image, reading it only once", async () => {
+    let reads = 0;
+    const { deps, sent } = makeDeps({
+      readImage: async () => {
+        reads++;
+        return null;
+      },
+    });
     expect(await sendClipboard(deps)).toEqual({ status: "empty" });
+    expect(reads).toBe(1);
     expect(sent).toEqual([]);
   });
 
