@@ -46,8 +46,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             selection::copy_selection,
-            selection::capture_screenshot,
-            selection::mask_alt_tap
+            selection::capture_screenshot
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -4,6 +4,7 @@ import type { encodeScreenshot } from "./image";
 import type { SendResult } from "./relay";
 
 export interface CaptureDeps {
+  /** Presses Ctrl+C in the app in front. True when the clipboard changed. */
   copySelection(): Promise<boolean>;
   /** Opens the Windows snipping overlay. Resolves true once a snip reached the clipboard,
    *  false when it was cancelled (Esc) or timed out. */
@@ -20,8 +21,14 @@ export interface CaptureDeps {
 
 export type CaptureOutcome =
   | { status: "sent"; kind: ItemKind; seq: number }
+  // Alt+Q: Ctrl+C changed nothing, so nothing was selected.
+  | { status: "nothing-copied" }
+  // Alt+Q: Ctrl+C changed the clipboard but it holds no text (the app in front copied an image).
+  | { status: "no-text" }
+  // Alt+W: the snip was cancelled (Esc) or nobody finished it in time.
   | { status: "cancelled" }
-  | { status: "empty" }
+  // Alt+W: a snip reached the clipboard but no image could be read from it.
+  | { status: "no-image" }
   | { status: "too-large" }
   | { status: "error"; message: string };
 
@@ -49,43 +56,35 @@ function failure(error: unknown): CaptureOutcome {
 const IMAGE_READ_ATTEMPTS = 20;
 const IMAGE_READ_PAUSE_MS = 100;
 
-async function readImageWhenReady(deps: CaptureDeps, attempts: number) {
+async function readImageWhenReady(deps: CaptureDeps) {
   for (let attempt = 1; ; attempt++) {
     const image = await deps.readImage();
-    if (image || attempt >= attempts) return image;
+    if (image || attempt >= IMAGE_READ_ATTEMPTS) return image;
     await deps.sleep(IMAGE_READ_PAUSE_MS);
   }
 }
 
-async function deliverClipboardImage(deps: CaptureDeps, attempts: number): Promise<CaptureOutcome> {
-  const image = await readImageWhenReady(deps, attempts);
-  if (!image) return { status: "empty" };
-  const encoded = await deps.encodeScreenshot(image.rgba, image.width, image.height);
-  if (!encoded) return { status: "too-large" };
-  return await deliver(deps, "image", encodeImageFrame(encoded, deps.now()));
-}
-
-/** Alt+Q: send the current selection as text; with no selection, start a screenshot and send that. */
+/** Alt+Q: copy the current selection and send it as text. */
 export async function sendSelection(deps: CaptureDeps): Promise<CaptureOutcome> {
   try {
-    if (await deps.copySelection()) {
-      const text = await deps.readText();
-      if (!hasText(text)) return { status: "empty" };
-      return await deliver(deps, "text", encodeTextFrame(text, deps.now()));
-    }
-    if (!(await deps.captureScreenshot())) return { status: "cancelled" };
-    return await deliverClipboardImage(deps, IMAGE_READ_ATTEMPTS);
+    if (!(await deps.copySelection())) return { status: "nothing-copied" };
+    const text = await deps.readText();
+    if (!hasText(text)) return { status: "no-text" };
+    return await deliver(deps, "text", encodeTextFrame(text, deps.now()));
   } catch (error) {
     return failure(error);
   }
 }
 
-/** Alt+W: send what is on the clipboard. Text wins over an image. */
-export async function sendClipboard(deps: CaptureDeps): Promise<CaptureOutcome> {
+/** Alt+W: open the snipping overlay and send the snip as an image. */
+export async function sendScreenshot(deps: CaptureDeps): Promise<CaptureOutcome> {
   try {
-    const text = await deps.readText();
-    if (hasText(text)) return await deliver(deps, "text", encodeTextFrame(text, deps.now()));
-    return await deliverClipboardImage(deps, 1);
+    if (!(await deps.captureScreenshot())) return { status: "cancelled" };
+    const image = await readImageWhenReady(deps);
+    if (!image) return { status: "no-image" };
+    const encoded = await deps.encodeScreenshot(image.rgba, image.width, image.height);
+    if (!encoded) return { status: "too-large" };
+    return await deliver(deps, "image", encodeImageFrame(encoded, deps.now()));
   } catch (error) {
     return failure(error);
   }

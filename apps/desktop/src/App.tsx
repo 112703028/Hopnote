@@ -19,10 +19,14 @@ function describe(outcome: CaptureOutcome): string | null {
   switch (outcome.status) {
     case "sent":
       return `已送出（${outcome.kind === "text" ? "文字" : "截圖"}，#${outcome.seq}）`;
+    case "nothing-copied":
+      return "沒有複製到內容（有選取文字嗎？截圖請按 Alt+W）";
+    case "no-text":
+      return "複製到的不是文字（前景程式是不是圖片或剪取工具？）";
     case "cancelled":
       return null;
-    case "empty":
-      return "剪貼簿裡沒有文字或圖片";
+    case "no-image":
+      return "截圖完成了，但讀不到剪貼簿裡的圖片";
     case "too-large":
       return "圖片縮小後仍超過上限";
     case "error":
@@ -59,7 +63,7 @@ function App() {
         if (cancelled) void cleanup();
         else {
           unregister = cleanup;
-          setHotkeyStatus("Alt+Q 傳送選取的文字（沒有選取就框選截圖），Alt+W 傳送剪貼簿（文字或截圖）");
+          setHotkeyStatus("Alt+Q 傳送選取的文字，Alt+W 框選截圖並傳送");
         }
       })
       .catch((error) => setHotkeyStatus(`快捷鍵註冊失敗：${error}`));

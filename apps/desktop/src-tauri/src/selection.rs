@@ -8,12 +8,12 @@ use std::time::{Duration, Instant};
 use windows::Win32::System::DataExchange::GetClipboardSequenceNumber;
 use windows::Win32::UI::Input::KeyboardAndMouse::{
     GetAsyncKeyState, SendInput, INPUT, INPUT_0, INPUT_KEYBOARD, KEYBDINPUT, KEYBD_EVENT_FLAGS,
-    KEYEVENTF_KEYUP, VIRTUAL_KEY, VK_C, VK_CONTROL, VK_LWIN, VK_MENU, VK_Q, VK_RWIN, VK_SHIFT,
+    KEYEVENTF_KEYUP, VIRTUAL_KEY, VK_C, VK_CONTROL, VK_LWIN, VK_MENU, VK_Q, VK_RWIN, VK_SHIFT, VK_W,
 };
 
-// Keys of the global hotkey. They must be physically up before we send Ctrl+C,
-// otherwise the target app sees e.g. Alt+Ctrl+C.
-const HOTKEY_KEYS: [VIRTUAL_KEY; 6] = [VK_MENU, VK_SHIFT, VK_CONTROL, VK_LWIN, VK_RWIN, VK_Q];  //這是「必須全部放開才能送 Ctrl+C」的清單。
+// Keys of the global hotkeys. They must be physically up before we send Ctrl+C or open
+// the snipping overlay, otherwise the target app sees e.g. Alt+Ctrl+C.
+const HOTKEY_KEYS: [VIRTUAL_KEY; 7] = [VK_MENU, VK_SHIFT, VK_CONTROL, VK_LWIN, VK_RWIN, VK_Q, VK_W];  //這是「必須全部放開才能送 Ctrl+C」的清單。
 
 // Alt pressed and released with no other key in between is taken as a lone Alt
 // tap: Chrome moves focus to its toolbar. The hotkey swallows the Q, so we
@@ -74,6 +74,11 @@ fn capture_screenshot_blocking() -> Result<bool, String> {
 }
 
 fn open_overlay_and_wait() -> Result<bool, String> {
+    mask_alt_if_down()?;
+    if !wait_until(|| HOTKEY_KEYS.iter().all(|k| !is_down(*k)), KEY_RELEASE_TIMEOUT) {
+        return Err("快捷鍵放開逾時".to_string());
+    }
+
     let before = clipboard_sequence();
     open_snipping_overlay()?;
     // Esc leaves the clipboard alone, so a cancelled snip simply runs into the timeout.
@@ -97,14 +102,6 @@ fn open_snipping_overlay() -> Result<(), String> {
         Err("無法開啟截圖工具（這台電腦的 Windows 沒有 ms-screenclip？）".to_string())
     }
 }
-
-/// For hotkey handlers that do not call `copy_selection`: stops the app in front
-/// from taking the swallowed hotkey as a lone Alt tap. Call it while Alt is held.
-#[tauri::command]
-pub fn mask_alt_tap() -> Result<(), String> {
-    mask_alt_if_down()
-}
-
 
 //如果 Alt 還按著，就送出那個無意義的鍵
 fn mask_alt_if_down() -> Result<(), String> {

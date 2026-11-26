@@ -1,7 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { readImage, readText } from "@tauri-apps/plugin-clipboard-manager";
 import { register, unregister } from "@tauri-apps/plugin-global-shortcut";
-import { sendClipboard, sendSelection, type CaptureDeps, type CaptureOutcome } from "./capture";
+import { sendScreenshot, sendSelection, type CaptureDeps, type CaptureOutcome } from "./capture";
 import { encodeScreenshot } from "./image";
 import { makeSender } from "./sender";
 import { loadSettings } from "./settings";
@@ -64,11 +64,7 @@ export async function registerHotkeys(
   try {
     await register(
       "Alt+W",
-      guarded(async () => {
-        // Stops the app in front from treating the swallowed hotkey as a lone Alt tap.
-        await invoke("mask_alt_tap").catch(() => undefined);
-        onOutcome("Alt+W", await sendClipboard(deps));
-      }),
+      guarded(async () => onOutcome("Alt+W", await sendScreenshot(deps))),
     );
   } catch (error) {
     await unregister("Alt+Q").catch(() => undefined);
